@@ -42,7 +42,7 @@ const InsightsPage = () => (
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08 }}
-            className="glass rounded-xl p-3.5"
+            className="bg-card border border-border rounded-xl p-3.5"
           >
             <s.icon className={`w-4 h-4 ${s.color} mb-2`} />
             <p className="font-display text-xl font-bold text-foreground">{s.value}</p>
