@@ -1,73 +1,131 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Camera, Sparkles } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ChatMessage, { Message } from "@/components/ChatMessage";
+import ReactMarkdown from "react-markdown";
 import TypingIndicator from "@/components/TypingIndicator";
+import { toast } from "sonner";
 
-const sampleReplies: Record<string, { content: string; eventCard?: Message["eventCard"] }> = {
-  default: { content: "I can help you manage your calendar! Try saying things like 'Schedule a meeting tomorrow at 3 PM' or 'What do I have next week?'" },
-  schedule: {
-    content: "I've prepared this event for you. Please confirm or edit:",
-    eventCard: { title: "Team Meeting", time: "Tomorrow, 3:00 PM – 4:00 PM", location: "Zoom", priority: "high" },
-  },
-  week: { content: "Here's your upcoming week:\n\n📅 **Monday** — Design Review (10 AM)\n📅 **Tuesday** — Sprint Planning (2 PM)\n📅 **Wednesday** — Free day ✨\n📅 **Thursday** — Client Call (11 AM)\n📅 **Friday** — Team Retro (4 PM)" },
-  goal: { content: "Great goal! I've broken it down into a study plan:\n\n📖 **Week 1-2:** Review core concepts (2h/day)\n📖 **Week 3:** Practice problems (3h/day)\n📖 **Week 4:** Mock exams & revision\n\nShall I schedule these study sessions into your calendar?" },
-};
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
 
 const quickActions = [
-  { label: "Schedule meeting", icon: "📅" },
-  { label: "What's next week?", icon: "🗓️" },
-  { label: "Plan a goal", icon: "🎯" },
+  { label: "Schedule a meeting tomorrow at 3 PM", icon: "📅" },
+  { label: "What should I plan for next week?", icon: "🗓️" },
+  { label: "Help me prepare for my exam in 4 weeks", icon: "🎯" },
 ];
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 const ChatPage = () => {
   const [messages, setMessages] = useState<Message[]>([
     { id: "1", role: "assistant", content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨" },
   ]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [messages, isLoading]);
 
-  const getReply = (text: string) => {
-    const lower = text.toLowerCase();
-    if (lower.includes("schedule") || lower.includes("meeting")) return sampleReplies.schedule;
-    if (lower.includes("week") || lower.includes("next")) return sampleReplies.week;
-    if (lower.includes("goal") || lower.includes("exam") || lower.includes("prepare")) return sampleReplies.goal;
-    return sampleReplies.default;
-  };
-
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const msg = text || input.trim();
-    if (!msg) return;
+    if (!msg || isLoading) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: msg };
-    setMessages((prev) => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInput("");
-    setIsTyping(true);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      const reply = getReply(msg);
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: reply.content,
-        eventCard: reply.eventCard,
+    let assistantSoFar = "";
+
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Request failed" }));
+        throw new Error(err.error || `Error ${resp.status}`);
+      }
+
+      if (!resp.body) throw new Error("No response body");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let streamDone = false;
+
+      const upsertAssistant = (chunk: string) => {
+        assistantSoFar += chunk;
+        const content = assistantSoFar;
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant" && last.id === "streaming") {
+            return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content } : m));
+          }
+          return [...prev, { id: "streaming", role: "assistant", content }];
+        });
       };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1200 + Math.random() * 800);
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") { streamDone = true; break; }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) upsertAssistant(content);
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Finalize the streaming message with a stable ID
+      setMessages(prev =>
+        prev.map(m => m.id === "streaming" ? { ...m, id: Date.now().toString() } : m)
+      );
+    } catch (e: any) {
+      console.error("Chat error:", e);
+      toast.error(e.message || "Failed to get response");
+      if (!assistantSoFar) {
+        // Remove the user message if no response came
+        setMessages(prev => prev.filter(m => m.id !== userMsg.id));
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col h-[100dvh]">
+    <div className="flex flex-col h-[100dvh] bg-background">
       {/* Header */}
-      <div className="glass-strong px-4 py-3 flex items-center gap-3 z-10">
+      <div className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 z-10">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-primary">
-          <Sparkles className="w-4.5 h-4.5 text-primary-foreground" />
+          <Sparkles className="w-4 h-4 text-primary-foreground" />
         </div>
         <div>
           <h1 className="font-display text-base font-bold text-foreground">Cortex</h1>
@@ -79,19 +137,40 @@ const ChatPage = () => {
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-40">
         <AnimatePresence>
           {messages.map((m) => (
-            <ChatMessage key={m.id} message={m} />
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex gap-2.5 ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+            >
+              <div className={`max-w-[80%]`}>
+                <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  m.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-tr-md"
+                    : "bg-card border border-border rounded-tl-md text-foreground"
+                }`}>
+                  {m.role === "assistant" ? (
+                    <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-li:my-0.5">
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    m.content
+                  )}
+                </div>
+              </div>
+            </motion.div>
           ))}
         </AnimatePresence>
-        {isTyping && <TypingIndicator />}
+        {isLoading && messages[messages.length - 1]?.role !== "assistant" && <TypingIndicator />}
 
-        {/* Quick actions shown only at start */}
-        {messages.length === 1 && !isTyping && (
+        {/* Quick actions */}
+        {messages.length === 1 && !isLoading && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="flex flex-wrap gap-2 pt-2">
             {quickActions.map((a) => (
               <button
                 key={a.label}
                 onClick={() => handleSend(a.label)}
-                className="glass rounded-full px-4 py-2 text-xs font-medium text-foreground hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
+                className="bg-card border border-border rounded-full px-4 py-2 text-xs font-medium text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5 active:scale-95"
               >
                 <span>{a.icon}</span> {a.label}
               </button>
@@ -101,24 +180,22 @@ const ChatPage = () => {
       </div>
 
       {/* Input */}
-      <div className="fixed bottom-16 left-0 right-0 p-3 glass-strong z-20">
+      <div className="fixed bottom-16 left-0 right-0 p-3 bg-card/90 backdrop-blur-xl border-t border-border z-20">
         <div className="flex items-center gap-2 max-w-lg mx-auto">
-          <button className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
-            <Camera className="w-4.5 h-4.5" />
-          </button>
           <div className="flex-1 relative">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Ask Cortex anything..."
-              className="w-full bg-secondary rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+              disabled={isLoading}
+              className="w-full bg-secondary rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
             />
           </div>
           <button
             onClick={() => handleSend()}
-            disabled={!input.trim()}
-            className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground disabled:opacity-30 transition-opacity glow-primary"
+            disabled={!input.trim() || isLoading}
+            className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground disabled:opacity-30 transition-opacity glow-primary active:scale-95"
           >
             <Send className="w-4 h-4" />
           </button>
