@@ -24,7 +24,7 @@ const CalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: "", time: "", location: "", priority: "medium" as const });
+  const [newEvent, setNewEvent] = useState<{ title: string; time: string; location: string; priority: "high" | "medium" | "low" }>({ title: "", time: "", location: "", priority: "medium" });
   const [events, setEvents] = useState<CalendarEvent[]>([
     { id: "1", title: "Design Review", time: "10:00 AM", location: "Room 3B", priority: "high", day: new Date().getDate() },
     { id: "2", title: "Lunch with Sarah", time: "12:30 PM", location: "Café Nero", priority: "low", day: new Date().getDate() },
