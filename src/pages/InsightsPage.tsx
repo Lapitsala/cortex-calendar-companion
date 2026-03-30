@@ -27,8 +27,8 @@ const stats = [
 ];
 
 const InsightsPage = () => (
-  <div className="flex flex-col h-[100dvh] pb-20">
-    <div className="glass-strong px-4 py-3 z-10">
+  <div className="flex flex-col h-[100dvh] pb-20 bg-background">
+    <div className="bg-card border-b border-border px-4 py-3 z-10">
       <h1 className="font-display text-lg font-bold text-foreground">Insights</h1>
       <p className="text-xs text-muted-foreground">Your productivity wrapped</p>
     </div>
