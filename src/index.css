@@ -75,13 +75,13 @@
     @apply bg-card/90 backdrop-blur-2xl border border-border/60;
   }
   .glow-primary {
-    box-shadow: 0 0 20px hsl(192 91% 56% / 0.15), 0 0 60px hsl(192 91% 56% / 0.05);
+    box-shadow: 0 0 20px hsl(221 83% 53% / 0.15), 0 0 60px hsl(221 83% 53% / 0.05);
   }
   .glow-accent {
-    box-shadow: 0 0 20px hsl(265 75% 65% / 0.15);
+    box-shadow: 0 0 20px hsl(262 83% 58% / 0.15);
   }
   .shadow-soft {
-    box-shadow: 0 4px 24px -4px hsl(222 28% 4% / 0.5);
+    box-shadow: 0 4px 24px -4px hsl(220 13% 50% / 0.12);
   }
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
