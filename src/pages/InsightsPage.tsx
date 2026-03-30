@@ -27,8 +27,8 @@ const stats = [
 ];
 
 const InsightsPage = () => (
-  <div className="flex flex-col h-[100dvh] pb-20">
-    <div className="glass-strong px-4 py-3 z-10">
+  <div className="flex flex-col h-[100dvh] pb-20 bg-background">
+    <div className="bg-card border-b border-border px-4 py-3 z-10">
       <h1 className="font-display text-lg font-bold text-foreground">Insights</h1>
       <p className="text-xs text-muted-foreground">Your productivity wrapped</p>
     </div>
@@ -42,7 +42,7 @@ const InsightsPage = () => (
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08 }}
-            className="glass rounded-xl p-3.5"
+            className="bg-card border border-border rounded-xl p-3.5"
           >
             <s.icon className={`w-4 h-4 ${s.color} mb-2`} />
             <p className="font-display text-xl font-bold text-foreground">{s.value}</p>
@@ -55,7 +55,7 @@ const InsightsPage = () => (
       </div>
 
       {/* Weekly chart */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass rounded-xl p-4">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-card border border-border rounded-xl p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3">Weekly Activity</h3>
         <ResponsiveContainer width="100%" height={140}>
           <BarChart data={weeklyData}>
@@ -67,7 +67,7 @@ const InsightsPage = () => (
       </motion.div>
 
       {/* Category breakdown */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass rounded-xl p-4">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-card border border-border rounded-xl p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3">Time Breakdown</h3>
         <div className="flex items-center gap-4">
           <ResponsiveContainer width={100} height={100}>
