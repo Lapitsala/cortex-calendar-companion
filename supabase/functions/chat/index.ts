@@ -9,9 +9,34 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages } = await req.json();
+    const { messages, calendarContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const today = new Date().toISOString().split("T")[0];
+    const calendarInfo = calendarContext
+      ? `\n\nThe user's upcoming calendar events:\n${calendarContext}\n\nToday's date is ${today}.`
+      : `\n\nToday's date is ${today}.`;
+
+    const systemPrompt = `You are Cortex, a friendly and helpful AI calendar assistant. You help users manage their schedule, plan events, set goals, and stay organized.
+
+Key behaviors:
+- Be concise and friendly
+- Use markdown formatting (bold, lists, emojis) for clarity
+- When users want to schedule something, confirm the details before creating
+- When asked about the week/schedule, provide organized summaries
+- For goal planning, break goals into actionable steps
+- Always be encouraging and proactive with suggestions
+- If the user's request is unclear, ask for clarification
+- If there's a scheduling conflict, point it out and suggest alternatives
+
+IMPORTANT - Event Creation:
+When the user confirms they want to create an event, include this exact block in your response (the system will parse it to create the event automatically):
+
+[EVENT_CREATE]{"title": "Event Title", "date": "YYYY-MM-DD", "start_time": "H:MM AM/PM", "end_time": "H:MM AM/PM", "location": "Location", "priority": "high|medium|low", "description": "Brief description"}[/EVENT_CREATE]
+
+Only include this block AFTER the user confirms the event details. Always ask for confirmation first.
+${calendarInfo}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -22,18 +47,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          {
-            role: "system",
-            content: `You are Cortex, a friendly and helpful AI calendar assistant. You help users manage their schedule, plan events, set goals, and stay organized.
-
-Key behaviors:
-- Be concise and friendly
-- Use markdown formatting (bold, lists, emojis) for clarity
-- When users want to schedule something, confirm the details
-- When asked about the week/schedule, provide organized summaries
-- For goal planning, break goals into actionable steps
-- Always be encouraging and proactive with suggestions`,
-          },
+          { role: "system", content: systemPrompt },
           ...messages,
         ],
         stream: true,
