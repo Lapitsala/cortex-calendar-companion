@@ -20,7 +20,7 @@ const CalendarPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [newEvent, setNewEvent] = useState({ title: "", time: "", endTime: "", location: "", priority: "medium" as const });
+  const [newEvent, setNewEvent] = useState<{ title: string; time: string; endTime: string; location: string; priority: "high" | "medium" | "low" }>({ title: "", time: "", endTime: "", location: "", priority: "medium" });
 
   const { events, createEvent, deleteEvent } = useCalendarEvents();
 
