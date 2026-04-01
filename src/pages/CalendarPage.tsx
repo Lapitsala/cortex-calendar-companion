@@ -74,8 +74,17 @@ const CalendarPage = () => {
   };
 
   const handleAddEvent = async () => {
-    if (!newEvent.title || !newEvent.time) {
-      toast.error("Please fill in title and time");
+    if (!newEvent.title.trim()) {
+      toast.error("Event title is required");
+      return;
+    }
+    if (!newEvent.time.trim()) {
+      toast.error("Start time is required");
+      return;
+    }
+    // Validate end time > start time if both provided
+    if (newEvent.endTime.trim() && newEvent.endTime.trim() <= newEvent.time.trim()) {
+      toast.error("End time must be after start time");
       return;
     }
     try {

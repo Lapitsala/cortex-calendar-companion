@@ -19,7 +19,14 @@ const SharingPage = () => {
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
 
   const handleShare = async () => {
-    if (!email.trim()) return;
+    if (!email.trim()) {
+      toast.error("Please enter an email address");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
     await shareCalendar(email, level);
     setEmail("");
     setShowShare(false);

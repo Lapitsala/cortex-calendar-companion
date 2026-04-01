@@ -55,7 +55,15 @@ const GroupsPage = () => {
   };
 
   const handleInvite = async () => {
-    if (!inviteEmail.trim() || !selectedGroup) return;
+    if (!selectedGroup) return;
+    if (!inviteEmail.trim()) {
+      toast.error("Please enter an email address");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(inviteEmail.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
     try {
       await inviteMember(selectedGroup.id, inviteEmail);
       setInviteEmail("");

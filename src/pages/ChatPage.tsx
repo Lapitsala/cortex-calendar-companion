@@ -348,6 +348,8 @@ const ChatPage = () => {
         onNewChat={startNewChat}
         onDeleteSession={(id) => setDeleteSessionTarget(id)}
         onArchiveSession={(id) => updateSession(id, { status: "archived" })}
+        onBulkDelete={handleBulkDelete}
+        onBulkArchive={handleBulkArchive}
       />
 
       {/* Delete session confirmation */}
