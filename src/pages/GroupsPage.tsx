@@ -5,6 +5,7 @@ import { useGroups, Group, GroupMember } from "@/hooks/useGroups";
 import { useAuth } from "@/hooks/useAuth";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
+import EventCreateModal from "@/components/EventCreateModal";
 
 const GroupsPage = () => {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ const GroupsPage = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<GroupMember[]>([]);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
 
   // Load pending invites for current user
   useEffect(() => {
@@ -75,8 +77,15 @@ const GroupsPage = () => {
   return (
     <div className="flex flex-col h-[100dvh] pb-20 bg-background">
       <div className="bg-card border-b border-border px-4 py-3 z-10">
-        <h1 className="font-display text-lg font-bold text-foreground">Groups</h1>
-        <p className="text-xs text-muted-foreground">Collaborate and schedule together</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-lg font-bold text-foreground">Groups</h1>
+            <p className="text-xs text-muted-foreground">Collaborate and schedule together</p>
+          </div>
+          <button onClick={() => setShowCreateEvent(true)} className="px-3 py-2 rounded-xl bg-primary/10 text-primary text-xs font-medium active:scale-95">
+            Create Event
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -230,6 +239,12 @@ const GroupsPage = () => {
         message="Are you sure? All members will lose access."
         onConfirm={async () => { if (deleteTarget) { await deleteGroup(deleteTarget); setDeleteTarget(null); toast.success("Group deleted"); } }}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <EventCreateModal
+        open={showCreateEvent}
+        onClose={() => setShowCreateEvent(false)}
+        title="Create Group Event"
       />
     </div>
   );

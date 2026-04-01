@@ -50,7 +50,9 @@ export const useChatSessions = () => {
       .select()
       .single();
     if (error) throw error;
-    return data as ChatSession;
+    const created = data as ChatSession;
+    setSessions((prev) => [created, ...prev]);
+    return created;
   };
 
   const updateSession = async (id: string, updates: Partial<ChatSession>) => {
@@ -61,6 +63,8 @@ export const useChatSessions = () => {
   };
 
   const deleteSession = async (id: string) => {
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    await supabase.from("chat_messages").delete().eq("session_id", id);
     await supabase.from("chat_sessions").delete().eq("id", id);
   };
 
@@ -91,15 +95,14 @@ export const useChatSessions = () => {
     return data as ChatMessage;
   };
 
-  // Cleanup: remove empty sessions (no messages) that are older than the active one
+  // Cleanup: remove empty sessions (no messages) with no meaningful interaction.
   const cleanupEmptySessions = async (activeSessionId?: string) => {
     for (const session of sessions) {
       if (session.id === activeSessionId) continue;
-      if (session.title === "New Chat") {
-        const msgs = await getMessages(session.id);
-        if (msgs.length === 0) {
-          await deleteSession(session.id);
-        }
+      const msgs = await getMessages(session.id);
+      const hasMeaningfulInteraction = msgs.some((m) => m.role === "user" && m.content.trim().length > 0);
+      if (!hasMeaningfulInteraction) {
+        await deleteSession(session.id);
       }
     }
   };
