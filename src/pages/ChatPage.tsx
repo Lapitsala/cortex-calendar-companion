@@ -34,7 +34,12 @@ const ChatPage = () => {
   const [searchParams] = useSearchParams();
 
   const { sessions, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
-  const { events, createEvent } = useCalendarEvents();
+  const { events } = useCalendarEvents();
+  const welcomeMessage: LocalMessage = {
+    id: "welcome",
+    role: "assistant",
+    content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨\n\nYou can also send me a photo 📸 of a schedule, flyer, or assignment and I'll extract the event details for you!"
+  };
 
   // Auto-scroll
   useEffect(() => {
@@ -55,24 +60,21 @@ const ChatPage = () => {
       if (sessions.length > 0 && !activeSessionId) {
         const incomplete = sessions.find(s => s.status === "incomplete");
         if (incomplete) {
-          loadSession(incomplete.id);
+          await loadSession(incomplete.id);
         } else {
-          startNewChat();
+          setMessages([welcomeMessage]);
         }
-      } else if (sessions.length === 0 && !activeSessionId) {
-        startNewChat();
+      } else if (sessions.length === 0 && !activeSessionId && messages.length === 0) {
+        setMessages([welcomeMessage]);
       }
     };
     initSession();
-  }, [sessions]);
+  }, [sessions, activeSessionId, messages.length]);
 
   const startNewChat = async () => {
     await cleanupEmptySessions(activeSessionId || undefined);
-    const session = await createSession();
-    setActiveSessionId(session.id);
-    setMessages([
-      { id: "welcome", role: "assistant", content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨\n\nYou can also send me a photo 📸 of a schedule, flyer, or assignment and I'll extract the event details for you!" }
-    ]);
+    setActiveSessionId(null);
+    setMessages([welcomeMessage]);
     setShowHistory(false);
   };
 
@@ -80,9 +82,7 @@ const ChatPage = () => {
     setActiveSessionId(sessionId);
     const msgs = await getMessages(sessionId);
     if (msgs.length === 0) {
-      setMessages([
-        { id: "welcome", role: "assistant", content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨\n\nYou can also send me a photo 📸 of a schedule, flyer, or assignment and I'll extract the event details for you!" }
-      ]);
+      setMessages([welcomeMessage]);
     } else {
       setMessages(msgs.map(m => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content })));
     }
@@ -95,16 +95,7 @@ const ChatPage = () => {
     while ((match = regex.exec(text)) !== null) {
       try {
         const eventData = JSON.parse(match[1]);
-        createEvent({
-          title: eventData.title || "Untitled Event",
-          description: eventData.description || null,
-          event_date: eventData.date || new Date().toISOString().split("T")[0],
-          start_time: eventData.start_time || eventData.time || "12:00 PM",
-          end_time: eventData.end_time || null,
-          location: eventData.location || null,
-          priority: eventData.priority || "medium",
-        });
-        toast.success(`Event "${eventData.title}" added to calendar!`);
+        toast.message(`Suggested event detected: ${eventData.title || "Untitled Event"}. Please create it manually and confirm.`);
       } catch (e) {
         console.error("Failed to parse event action:", e);
       }

@@ -140,9 +140,9 @@ const ChatHistoryPanel = ({
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive active:scale-95"
+                  className="px-3 h-8 rounded-lg bg-destructive/10 flex items-center justify-center gap-1 text-destructive text-xs font-medium active:scale-95"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Selected
                 </button>
               </div>
             )}
@@ -234,7 +234,7 @@ const ChatHistoryPanel = ({
                     onClick={e => e.stopPropagation()}
                     className="bg-card rounded-2xl border border-border p-5 w-full max-w-xs space-y-3"
                   >
-                    <h3 className="font-display text-base font-bold text-foreground">Delete {selected.size} chat{selected.size > 1 ? "s" : ""}?</h3>
+                    <h3 className="font-display text-base font-bold text-foreground">Are you sure you want to delete {selected.size} chat{selected.size > 1 ? "s" : ""}?</h3>
                     <p className="text-sm text-muted-foreground">This action cannot be undone. All messages will be permanently deleted.</p>
                     <div className="flex gap-2">
                       <button

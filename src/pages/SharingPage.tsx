@@ -4,6 +4,7 @@ import { Share2, X, Check, XCircle, Trash2, Eye, EyeOff, ChevronRight } from "lu
 import { useCalendarShares, ShareLevel } from "@/hooks/useCalendarShares";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
+import EventCreateModal from "@/components/EventCreateModal";
 
 const shareLevelLabels: Record<ShareLevel, { label: string; desc: string; icon: typeof Eye }> = {
   availability_only: { label: "Availability Only", desc: "Only see busy/free", icon: EyeOff },
@@ -17,6 +18,7 @@ const SharingPage = () => {
   const [email, setEmail] = useState("");
   const [level, setLevel] = useState<ShareLevel>("limited");
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
 
   const handleShare = async () => {
     if (!email.trim()) {
@@ -35,8 +37,15 @@ const SharingPage = () => {
   return (
     <div className="flex flex-col h-[100dvh] pb-20 bg-background">
       <div className="bg-card border-b border-border px-4 py-3 z-10">
-        <h1 className="font-display text-lg font-bold text-foreground">Shared Calendars</h1>
-        <p className="text-xs text-muted-foreground">Share with loved ones</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-lg font-bold text-foreground">Shared Calendars</h1>
+            <p className="text-xs text-muted-foreground">Share with loved ones</p>
+          </div>
+          <button onClick={() => setShowCreateEvent(true)} className="px-3 py-2 rounded-xl bg-primary/10 text-primary text-xs font-medium active:scale-95">
+            Create Event
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
@@ -161,6 +170,12 @@ const SharingPage = () => {
         message="Are you sure you want to revoke this person's access to your calendar?"
         onConfirm={async () => { if (revokeTarget) { await revokeShare(revokeTarget); setRevokeTarget(null); } }}
         onCancel={() => setRevokeTarget(null)}
+      />
+
+      <EventCreateModal
+        open={showCreateEvent}
+        onClose={() => setShowCreateEvent(false)}
+        title="Create Shared Event"
       />
     </div>
   );

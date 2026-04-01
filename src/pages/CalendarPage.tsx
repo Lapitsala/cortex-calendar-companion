@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Plus, X, Clock, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useCalendarEvents, CalendarEvent } from "@/hooks/useCalendarEvents";
 import MonthView from "@/components/calendar/MonthView";
@@ -9,6 +9,7 @@ import DayView from "@/components/calendar/DayView";
 import YearView from "@/components/calendar/YearView";
 import EventDetailSheet from "@/components/calendar/EventDetailSheet";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import EventCreateModal from "@/components/EventCreateModal";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -20,9 +21,8 @@ const CalendarPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [newEvent, setNewEvent] = useState<{ title: string; time: string; endTime: string; location: string; priority: "high" | "medium" | "low" }>({ title: "", time: "", endTime: "", location: "", priority: "medium" });
 
-  const { events, createEvent, deleteEvent } = useCalendarEvents();
+  const { events, deleteEvent } = useCalendarEvents();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -71,36 +71,6 @@ const CalendarPage = () => {
       return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
     }
     return new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  };
-
-  const handleAddEvent = async () => {
-    if (!newEvent.title.trim()) {
-      toast.error("Event title is required");
-      return;
-    }
-    if (!newEvent.time.trim()) {
-      toast.error("Start time is required");
-      return;
-    }
-    // Validate end time > start time if both provided
-    if (newEvent.endTime.trim() && newEvent.endTime.trim() <= newEvent.time.trim()) {
-      toast.error("End time must be after start time");
-      return;
-    }
-    try {
-      await createEvent({
-        title: newEvent.title,
-        description: null,
-        event_date: selectedDate,
-        start_time: newEvent.time,
-        end_time: newEvent.endTime || null,
-        location: newEvent.location || null,
-        priority: newEvent.priority,
-      });
-      setNewEvent({ title: "", time: "", endTime: "", location: "", priority: "medium" });
-      setShowAddModal(false);
-      toast.success(`"${newEvent.title}" added!`);
-    } catch { /* handled in hook */ }
   };
 
   const handleDeleteConfirm = async () => {
@@ -230,58 +200,12 @@ const CalendarPage = () => {
         <Plus className="w-5 h-5" />
       </button>
 
-      {/* Add Event Modal */}
-      <AnimatePresence>
-        {showAddModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center"
-            onClick={() => setShowAddModal(false)}
-          >
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-base font-bold text-foreground">New Event</h3>
-                <button onClick={() => setShowAddModal(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
-                  <X className="w-4 h-4 text-muted-foreground" />
-                </button>
-              </div>
-              <input value={newEvent.title} onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))} placeholder="Event title" className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              <div className="flex gap-2">
-                <input value={newEvent.time} onChange={e => setNewEvent(p => ({ ...p, time: e.target.value }))} placeholder="Start (e.g. 3:00 PM)" className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                <input value={newEvent.endTime} onChange={e => setNewEvent(p => ({ ...p, endTime: e.target.value }))} placeholder="End (optional)" className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              </div>
-              <input value={newEvent.location} onChange={e => setNewEvent(p => ({ ...p, location: e.target.value }))} placeholder="Location (optional)" className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              <div className="flex gap-2">
-                {(["low", "medium", "high"] as const).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setNewEvent(prev => ({ ...prev, priority: p }))}
-                    className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all active:scale-95 ${
-                      newEvent.priority === p
-                        ? p === "high" ? "bg-destructive text-destructive-foreground" : p === "medium" ? "bg-warning text-primary-foreground" : "bg-success text-primary-foreground"
-                        : "bg-secondary text-muted-foreground"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-              <button onClick={handleAddEvent} className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
-                Add Event
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <EventCreateModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        initialDate={selectedDate}
+        title="New Event"
+      />
 
       {/* Event Detail Sheet */}
       <EventDetailSheet
