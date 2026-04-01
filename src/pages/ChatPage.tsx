@@ -28,7 +28,7 @@ const ChatPage = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
 
-  const { sessions, createSession, updateSession, deleteSession, getMessages, addMessage } = useChatSessions();
+  const { sessions, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
   const { events, createEvent } = useCalendarEvents();
 
   // Auto-scroll
@@ -62,6 +62,8 @@ const ChatPage = () => {
   }, [sessions]);
 
   const startNewChat = async () => {
+    // Cleanup empty sessions before creating new one
+    await cleanupEmptySessions(activeSessionId || undefined);
     const session = await createSession();
     setActiveSessionId(session.id);
     setMessages([

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export interface CalendarEvent {
@@ -11,11 +12,13 @@ export interface CalendarEvent {
   end_time: string | null;
   location: string | null;
   priority: "high" | "medium" | "low";
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export const useCalendarEvents = () => {
+  const { user } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,21 +37,17 @@ export const useCalendarEvents = () => {
 
   useEffect(() => {
     fetchEvents();
-
     const channel = supabase
       .channel("calendar_events_realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => {
-        fetchEvents();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => fetchEvents())
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [fetchEvents]);
 
-  const createEvent = async (event: Omit<CalendarEvent, "id" | "created_at" | "updated_at">) => {
+  const createEvent = async (event: Omit<CalendarEvent, "id" | "created_at" | "updated_at" | "user_id">) => {
     const { data, error } = await supabase
       .from("calendar_events")
-      .insert(event)
+      .insert({ ...event, user_id: user?.id })
       .select()
       .single();
     if (error) {
