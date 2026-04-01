@@ -28,7 +28,7 @@ const ChatPage = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
 
-  const { sessions, createSession, updateSession, deleteSession, getMessages, addMessage } = useChatSessions();
+  const { sessions, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
   const { events, createEvent } = useCalendarEvents();
 
   // Auto-scroll
