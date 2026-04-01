@@ -62,6 +62,8 @@ const ChatPage = () => {
   }, [sessions]);
 
   const startNewChat = async () => {
+    // Cleanup empty sessions before creating new one
+    await cleanupEmptySessions(activeSessionId || undefined);
     const session = await createSession();
     setActiveSessionId(session.id);
     setMessages([
