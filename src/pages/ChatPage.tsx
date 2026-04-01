@@ -233,6 +233,23 @@ const ChatPage = () => {
     toast.success("Chat deleted");
   };
 
+  const handleBulkDelete = async (ids: string[]) => {
+    for (const id of ids) {
+      await deleteSession(id);
+    }
+    if (ids.includes(activeSessionId || "")) {
+      startNewChat();
+    }
+    toast.success(`${ids.length} chat${ids.length > 1 ? "s" : ""} deleted`);
+  };
+
+  const handleBulkArchive = async (ids: string[]) => {
+    for (const id of ids) {
+      await updateSession(id, { status: "archived" });
+    }
+    toast.success(`${ids.length} chat${ids.length > 1 ? "s" : ""} archived`);
+  };
+
   // Clean display text (remove event action markers)
   const cleanContent = (text: string) => text.replace(/\[EVENT_CREATE\][\s\S]*?\[\/EVENT_CREATE\]/g, "").trim();
 
