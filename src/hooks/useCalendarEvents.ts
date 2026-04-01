@@ -36,13 +36,15 @@ export const useCalendarEvents = () => {
   }, []);
 
   useEffect(() => {
-    fetchEvents();
     const channel = supabase
       .channel("calendar_events_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => fetchEvents())
       .subscribe();
+
+    fetchEvents();
+
     return () => { supabase.removeChannel(channel); };
-  }, [fetchEvents]);
+  }, []);
 
   const createEvent = async (event: Omit<CalendarEvent, "id" | "created_at" | "updated_at" | "user_id">) => {
     const { data, error } = await supabase
