@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface ChatSession {
   id: string;
   title: string;
   status: string;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +20,7 @@ export interface ChatMessage {
 }
 
 export const useChatSessions = () => {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +46,7 @@ export const useChatSessions = () => {
   const createSession = async (title = "New Chat") => {
     const { data, error } = await supabase
       .from("chat_sessions")
-      .insert({ title })
+      .insert({ title, user_id: user?.id })
       .select()
       .single();
     if (error) throw error;
@@ -78,7 +81,6 @@ export const useChatSessions = () => {
       .select()
       .single();
     if (error) throw error;
-    // Update session timestamp and title from first user message
     if (role === "user") {
       const title = content.length > 40 ? content.slice(0, 40) + "..." : content;
       await supabase
@@ -89,5 +91,18 @@ export const useChatSessions = () => {
     return data as ChatMessage;
   };
 
-  return { sessions, loading, createSession, updateSession, deleteSession, getMessages, addMessage, refetch: fetchSessions };
+  // Cleanup: remove empty sessions (no messages) that are older than the active one
+  const cleanupEmptySessions = async (activeSessionId?: string) => {
+    for (const session of sessions) {
+      if (session.id === activeSessionId) continue;
+      if (session.title === "New Chat") {
+        const msgs = await getMessages(session.id);
+        if (msgs.length === 0) {
+          await deleteSession(session.id);
+        }
+      }
+    }
+  };
+
+  return { sessions, loading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions, refetch: fetchSessions };
 };
