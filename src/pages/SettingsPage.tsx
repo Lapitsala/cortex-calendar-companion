@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check } from "lucide-react";
+import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SettingItem {
   icon: typeof Clock;
@@ -26,23 +27,21 @@ const sections: { title: string; items: SettingItem[] }[] = [
     ],
   },
   {
-    title: "Privacy & Integrations",
+    title: "Privacy",
     items: [
       { icon: Shield, label: "Privacy Settings", value: "Strict", options: ["Strict", "Normal", "Relaxed"] },
-      { icon: Calendar, label: "Google Calendar", value: "Not connected", options: ["Connect", "Disconnect"] },
-      { icon: Calendar, label: "Apple Calendar", value: "Not connected", options: ["Connect", "Disconnect"] },
     ],
   },
   {
     title: "Appearance",
     items: [
       { icon: Palette, label: "Theme", value: "Light", options: ["Light", "Dark", "System"] },
-      { icon: User, label: "Account", value: "", options: [] },
     ],
   },
 ];
 
 const SettingsPage = () => {
+  const { user, signOut } = useAuth();
   const [settings, setSettings] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     sections.forEach(s => s.items.forEach(i => { map[i.label] = i.value; }));
@@ -56,6 +55,11 @@ const SettingsPage = () => {
     toast.success(`${label} set to ${value}`);
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out");
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] pb-20 bg-background">
       <div className="bg-card border-b border-border px-4 py-3 z-10">
@@ -64,6 +68,17 @@ const SettingsPage = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+        {/* Account info */}
+        <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
+            <p className="text-xs text-muted-foreground">Signed in</p>
+          </div>
+        </div>
+
         {sections.map((section, si) => (
           <motion.div key={section.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: si * 0.08 }}>
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">{section.title}</h2>
@@ -83,6 +98,14 @@ const SettingsPage = () => {
             </div>
           </motion.div>
         ))}
+
+        {/* Sign out */}
+        <button
+          onClick={handleSignOut}
+          className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+        >
+          <LogOut className="w-4 h-4" /> Sign Out
+        </button>
       </div>
 
       {/* Options sheet */}
