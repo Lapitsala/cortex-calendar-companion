@@ -37,7 +37,7 @@ export const useCalendarEvents = () => {
   }, []);
 
   useEffect(() => {
-    const channelName = `calendar_events_realtime_${user?.id ?? "anonymous"}_${crypto.randomUUID()}`;
+    const channelName = `calendar_events_realtime_${user?.id ?? "anonymous"}_${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => fetchEvents())
