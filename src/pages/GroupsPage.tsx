@@ -43,7 +43,10 @@ const GroupsPage = () => {
   };
 
   const handleCreate = async () => {
-    if (!newGroupName.trim()) return;
+    if (!newGroupName.trim()) {
+      toast.error("Group name is required");
+      return;
+    }
     await createGroup(newGroupName, newGroupDesc);
     setNewGroupName("");
     setNewGroupDesc("");
