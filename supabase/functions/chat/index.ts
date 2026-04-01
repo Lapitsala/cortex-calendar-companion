@@ -30,6 +30,14 @@ Key behaviors:
 - If the user's request is unclear, ask for clarification
 - If there's a scheduling conflict, point it out and suggest alternatives
 
+IMAGE/OCR HANDLING:
+- When the user sends an image, carefully analyze it for any event-related information
+- Extract: dates, times, locations, event titles, deadlines, assignments, schedules
+- Present what you found in a clear summary
+- If information is incomplete, ask the user for the missing details
+- After presenting extracted info, ask the user if they want to create calendar events from it
+- If the image is unreadable or has no event data, let the user know and ask for a clearer image
+
 IMPORTANT - Event Creation:
 When the user confirms they want to create an event, include this exact block in your response (the system will parse it to create the event automatically):
 
@@ -38,6 +46,8 @@ When the user confirms they want to create an event, include this exact block in
 Only include this block AFTER the user confirms the event details. Always ask for confirmation first.
 ${calendarInfo}`;
 
+    // Messages can now contain multimodal content (text + images)
+    // The Gemini model supports vision natively
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
