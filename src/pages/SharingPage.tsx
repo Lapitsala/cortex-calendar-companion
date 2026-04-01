@@ -136,7 +136,8 @@ const SharingPage = () => {
                       <p className="text-xs text-muted-foreground">{shareLevelLabels[l].desc}</p>
                     </div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
               <button onClick={handleShare}
                 className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
