@@ -29,6 +29,7 @@ export const useCalendarEvents = () => {
       .order("event_date", { ascending: true });
     if (error) {
       console.error("Error fetching events:", error);
+      setLoading(false);
       return;
     }
     setEvents((data as CalendarEvent[]) || []);
@@ -36,15 +37,18 @@ export const useCalendarEvents = () => {
   }, []);
 
   useEffect(() => {
+    const channelName = `calendar_events_realtime_${user?.id ?? "anonymous"}_${crypto.randomUUID()}`;
     const channel = supabase
-      .channel("calendar_events_realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => fetchEvents())
       .subscribe();
 
     fetchEvents();
 
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchEvents, user?.id]);
 
   const createEvent = async (event: Omit<CalendarEvent, "id" | "created_at" | "updated_at" | "user_id">) => {
     const { data, error } = await supabase
