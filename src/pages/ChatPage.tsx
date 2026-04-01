@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, Menu } from "lucide-react";
+import { Send, Sparkles, Menu, Camera, Image as ImageIcon, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import TypingIndicator from "@/components/TypingIndicator";
@@ -14,6 +14,7 @@ interface LocalMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  imageUrl?: string; // base64 data URL for image messages
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
@@ -25,7 +26,11 @@ const ChatPage = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [deleteSessionTarget, setDeleteSessionTarget] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<string | null>(null); // base64 preview
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [searchParams] = useSearchParams();
 
   const { sessions, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
@@ -62,12 +67,11 @@ const ChatPage = () => {
   }, [sessions]);
 
   const startNewChat = async () => {
-    // Cleanup empty sessions before creating new one
     await cleanupEmptySessions(activeSessionId || undefined);
     const session = await createSession();
     setActiveSessionId(session.id);
     setMessages([
-      { id: "welcome", role: "assistant", content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨" }
+      { id: "welcome", role: "assistant", content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨\n\nYou can also send me a photo 📸 of a schedule, flyer, or assignment and I'll extract the event details for you!" }
     ]);
     setShowHistory(false);
   };
@@ -77,7 +81,7 @@ const ChatPage = () => {
     const msgs = await getMessages(sessionId);
     if (msgs.length === 0) {
       setMessages([
-        { id: "welcome", role: "assistant", content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨" }
+        { id: "welcome", role: "assistant", content: "Hey! I'm **Cortex**, your AI calendar assistant. How can I help you today? ✨\n\nYou can also send me a photo 📸 of a schedule, flyer, or assignment and I'll extract the event details for you!" }
       ]);
     } else {
       setMessages(msgs.map(m => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content })));
@@ -107,9 +111,70 @@ const ChatPage = () => {
     }
   };
 
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_SIZE = 1024;
+          let { width, height } = img;
+          if (width > MAX_SIZE || height > MAX_SIZE) {
+            if (width > height) {
+              height = (height / width) * MAX_SIZE;
+              width = MAX_SIZE;
+            } else {
+              width = (width / height) * MAX_SIZE;
+              height = MAX_SIZE;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Image too large. Max 20MB.");
+      return;
+    }
+
+    try {
+      const compressed = await compressImage(file);
+      setPendingImage(compressed);
+      setShowAttachMenu(false);
+    } catch {
+      toast.error("Failed to process image");
+    }
+
+    // Reset file input
+    e.target.value = "";
+  };
+
   const handleSend = async (text?: string) => {
     const msg = text || input.trim();
-    if (!msg || isLoading) return;
+    const hasImage = !!pendingImage;
+
+    if (!msg && !hasImage) return;
+    if (isLoading) return;
 
     // Ensure we have a session
     let sessionId = activeSessionId;
@@ -119,14 +184,21 @@ const ChatPage = () => {
       setActiveSessionId(sessionId);
     }
 
-    const userMsg: LocalMessage = { id: Date.now().toString(), role: "user", content: msg };
+    const displayContent = hasImage && msg ? msg : hasImage ? "📸 Analyze this image for event details" : msg;
+    const userMsg: LocalMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      content: displayContent,
+      imageUrl: pendingImage || undefined,
+    };
     const updatedMessages = [...messages.filter(m => m.id !== "welcome"), userMsg];
     setMessages(prev => [...prev, userMsg]);
     setInput("");
+    setPendingImage(null);
     setIsLoading(true);
 
-    // Save user message to DB
-    await addMessage(sessionId, "user", msg);
+    // Save user message to DB (text only, images are transient)
+    await addMessage(sessionId, "user", displayContent);
 
     let assistantSoFar = "";
 
@@ -134,6 +206,25 @@ const ChatPage = () => {
     const upcomingEvents = events.slice(0, 20).map(e =>
       `- ${e.title} on ${e.event_date} at ${e.start_time}${e.location ? ` (${e.location})` : ""} [${e.priority}]`
     ).join("\n");
+
+    // Build message payload for API
+    const apiMessages = updatedMessages.map(m => {
+      if (m.imageUrl) {
+        // Multimodal message with image
+        const content: any[] = [];
+        if (m.content && m.content !== "📸 Analyze this image for event details") {
+          content.push({ type: "text", text: m.content });
+        } else {
+          content.push({ type: "text", text: "Please analyze this image and extract any event details (dates, times, locations, titles, deadlines). Present what you find clearly." });
+        }
+        content.push({
+          type: "image_url",
+          image_url: { url: m.imageUrl },
+        });
+        return { role: m.role, content };
+      }
+      return { role: m.role, content: m.content };
+    });
 
     try {
       const resp = await fetch(CHAT_URL, {
@@ -143,7 +234,7 @@ const ChatPage = () => {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: apiMessages,
           calendarContext: upcomingEvents,
         }),
       });
@@ -203,7 +294,6 @@ const ChatPage = () => {
       // Save assistant message to DB
       if (assistantSoFar) {
         await addMessage(sessionId, "assistant", assistantSoFar);
-        // Parse for event creation actions
         parseEventActions(assistantSoFar);
       }
     } catch (e: any) {
@@ -280,6 +370,16 @@ const ChatPage = () => {
               className={`flex gap-2.5 ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}
             >
               <div className="max-w-[80%]">
+                {/* Image preview in message */}
+                {m.imageUrl && (
+                  <div className={`mb-1.5 ${m.role === "user" ? "flex justify-end" : ""}`}>
+                    <img
+                      src={m.imageUrl}
+                      alt="Uploaded"
+                      className="rounded-xl max-w-[200px] max-h-[200px] object-cover border border-border"
+                    />
+                  </div>
+                )}
                 <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   m.role === "user"
                     ? "bg-primary text-primary-foreground rounded-tr-md"
@@ -315,28 +415,119 @@ const ChatPage = () => {
         )}
       </div>
 
+      {/* Pending image preview */}
+      <AnimatePresence>
+        {pendingImage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-[7.5rem] left-0 right-0 px-4 z-20"
+          >
+            <div className="max-w-lg mx-auto bg-card border border-border rounded-xl p-2 flex items-center gap-3">
+              <img src={pendingImage} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground">Image attached</p>
+                <p className="text-[11px] text-muted-foreground">Add a message or send to analyze</p>
+              </div>
+              <button
+                onClick={() => setPendingImage(null)}
+                className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center active:scale-95"
+              >
+                <X className="w-3.5 h-3.5 text-destructive" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input */}
       <div className="fixed bottom-16 left-0 right-0 p-3 bg-card/90 backdrop-blur-xl border-t border-border z-20">
         <div className="flex items-center gap-2 max-w-lg mx-auto">
+          {/* Attach menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowAttachMenu(!showAttachMenu)}
+              disabled={isLoading}
+              className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition-all active:scale-95"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </button>
+
+            <AnimatePresence>
+              {showAttachMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute bottom-12 left-0 bg-card border border-border rounded-xl shadow-soft overflow-hidden z-30"
+                >
+                  <button
+                    onClick={() => {
+                      cameraInputRef.current?.click();
+                      setShowAttachMenu(false);
+                    }}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors w-full"
+                  >
+                    <Camera className="w-4 h-4 text-primary" />
+                    <span>Camera</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setShowAttachMenu(false);
+                    }}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors w-full"
+                  >
+                    <ImageIcon className="w-4 h-4 text-accent" />
+                    <span>Gallery</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Hidden file inputs */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageSelect}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleImageSelect}
+          />
+
           <div className="flex-1">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask Cortex anything..."
+              placeholder={pendingImage ? "Add a message (optional)..." : "Ask Cortex anything..."}
               disabled={isLoading}
               className="w-full bg-secondary rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
             />
           </div>
           <button
             onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && !pendingImage) || isLoading}
             className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground disabled:opacity-30 transition-opacity glow-primary active:scale-95"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Click outside to close attach menu */}
+      {showAttachMenu && (
+        <div className="fixed inset-0 z-10" onClick={() => setShowAttachMenu(false)} />
+      )}
 
       {/* Chat History Panel */}
       <ChatHistoryPanel
