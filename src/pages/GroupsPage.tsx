@@ -43,7 +43,10 @@ const GroupsPage = () => {
   };
 
   const handleCreate = async () => {
-    if (!newGroupName.trim()) return;
+    if (!newGroupName.trim()) {
+      toast.error("Group name is required");
+      return;
+    }
     await createGroup(newGroupName, newGroupDesc);
     setNewGroupName("");
     setNewGroupDesc("");
@@ -52,7 +55,15 @@ const GroupsPage = () => {
   };
 
   const handleInvite = async () => {
-    if (!inviteEmail.trim() || !selectedGroup) return;
+    if (!selectedGroup) return;
+    if (!inviteEmail.trim()) {
+      toast.error("Please enter an email address");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(inviteEmail.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
     try {
       await inviteMember(selectedGroup.id, inviteEmail);
       setInviteEmail("");
