@@ -123,12 +123,14 @@ const SharingPage = () => {
                 className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Sharing Level</p>
-                {(Object.keys(shareLevelLabels) as ShareLevel[]).map(l => (
+                {(Object.keys(shareLevelLabels) as ShareLevel[]).map(l => {
+                  const IconComp = shareLevelLabels[l].icon;
+                  return (
                   <button key={l} onClick={() => setLevel(l)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors active:scale-[0.98] ${
                       level === l ? "bg-primary/10 border border-primary/30" : "bg-secondary"
                     }`}>
-                    <shareLevelLabels[l].icon className={`w-4 h-4 ${level === l ? "text-primary" : "text-muted-foreground"}`} />
+                    <IconComp className={`w-4 h-4 ${level === l ? "text-primary" : "text-muted-foreground"}`} />
                     <div>
                       <p className={`text-sm font-medium ${level === l ? "text-primary" : "text-foreground"}`}>{shareLevelLabels[l].label}</p>
                       <p className="text-xs text-muted-foreground">{shareLevelLabels[l].desc}</p>
