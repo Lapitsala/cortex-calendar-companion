@@ -21,7 +21,7 @@ const AuthPage = () => {
         const { requiresEmailVerification } = await signUp(email, password, displayName || undefined);
 
         if (requiresEmailVerification) {
-          toast.error("Sign up succeeded, but email verification is still enabled in Supabase Auth settings.");
+          toast.success("Account created! Please check your email to verify your account.");
         } else {
           toast.success("Account created! You're signed in.");
         }
