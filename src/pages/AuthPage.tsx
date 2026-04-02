@@ -18,8 +18,13 @@ const AuthPage = () => {
     setLoading(true);
     try {
       if (isSignUp) {
-        await signUp(email, password, displayName || undefined);
-        toast.success("Account created! Check your email to verify.");
+        const { requiresEmailVerification } = await signUp(email, password, displayName || undefined);
+
+        if (requiresEmailVerification) {
+          toast.error("Sign up succeeded, but email verification is still enabled in Supabase Auth settings.");
+        } else {
+          toast.success("Account created! You're signed in.");
+        }
       } else {
         await signIn(email, password);
         toast.success("Welcome back!");
