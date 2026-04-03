@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -21,35 +21,56 @@ export const useCalendarEvents = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const fetchEvents = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("calendar_events")
-      .select("*")
-      .order("event_date", { ascending: true });
-    if (error) {
-      console.error("Error fetching events:", error);
+    try {
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .select("*")
+        .order("event_date", { ascending: true });
+      if (error) {
+        console.error("Error fetching events:", error);
+        setLoading(false);
+        return;
+      }
+      setEvents((data as CalendarEvent[]) || []);
+    } catch (e) {
+      console.error("Failed to fetch events:", e);
+    } finally {
       setLoading(false);
-      return;
     }
-    setEvents((data as CalendarEvent[]) || []);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchEvents();
 
-    const channelName = `calendar_events_${user?.id ?? "anon"}`;
-    const channel = supabase.channel(channelName);
-    
-    channel
-      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => {
-        fetchEvents();
-      })
-      .subscribe();
+    // Clean up any previous channel before creating a new one
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    try {
+      const channel = supabase
+        .channel(`cal_events_${Date.now()}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "calendar_events" },
+          () => fetchEvents()
+        )
+        .subscribe();
+
+      channelRef.current = channel;
+    } catch (e) {
+      console.error("Realtime subscription error:", e);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, [user?.id]);
 
