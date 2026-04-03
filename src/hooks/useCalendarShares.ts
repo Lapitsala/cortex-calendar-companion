@@ -48,11 +48,11 @@ export const useCalendarShares = () => {
       if (!shares || shares.length === 0) return [];
       const userIds = [...new Set(shares.map(s => lookupField === "owner_id" ? s.shared_with_id : s.owner_id))];
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email").in("user_id", userIds);
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
       
       return shares.map(s => {
         const targetId = lookupField === "owner_id" ? s.shared_with_id : s.owner_id;
-        const profile = profileMap.get(targetId);
+        const profile = profileMap.get(targetId) as any;
         return {
           ...s,
           ...(lookupField === "owner_id"

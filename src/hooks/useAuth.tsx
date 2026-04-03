@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+
+type User = Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"];
+type Session = Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"];
 
 interface AuthContext {
   user: User | null;
