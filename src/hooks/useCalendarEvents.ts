@@ -37,18 +37,21 @@ export const useCalendarEvents = () => {
   }, []);
 
   useEffect(() => {
-    const channelName = `calendar_events_realtime_${user?.id ?? "anonymous"}_${Date.now()}`;
-    const channel = supabase
-      .channel(channelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => fetchEvents())
-      .subscribe();
-
     fetchEvents();
+
+    const channelName = `calendar_events_${user?.id ?? "anon"}`;
+    const channel = supabase.channel(channelName);
+    
+    channel
+      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events" }, () => {
+        fetchEvents();
+      })
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchEvents, user?.id]);
+  }, [user?.id]);
 
   const createEvent = async (event: Omit<CalendarEvent, "id" | "created_at" | "updated_at" | "user_id">) => {
     const { data, error } = await supabase
