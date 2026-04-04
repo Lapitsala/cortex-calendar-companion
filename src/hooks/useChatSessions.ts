@@ -25,14 +25,16 @@ export const useChatSessions = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchSessions = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
     const { data, error } = await supabase
       .from("chat_sessions")
       .select("*")
+      .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
     if (error) { console.error(error); return; }
     setSessions((data as ChatSession[]) || []);
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchSessions();
