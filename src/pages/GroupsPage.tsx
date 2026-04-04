@@ -172,9 +172,14 @@ const GroupsPage = () => {
                 className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
               <input value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} placeholder="Description (optional)"
                 className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              <button onClick={handleCreate} className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
-                Create Group
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => { setShowCreate(false); setNewGroupName(""); setNewGroupDesc(""); }} className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98] transition-transform">
+                  Cancel
+                </button>
+                <button onClick={handleCreate} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
+                  Done
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
