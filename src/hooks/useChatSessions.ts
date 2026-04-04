@@ -65,9 +65,18 @@ export const useChatSessions = () => {
   };
 
   const deleteSession = async (id: string) => {
+    // Optimistic UI removal
     setSessions((prev) => prev.filter((s) => s.id !== id));
-    await supabase.from("chat_messages").delete().eq("session_id", id);
-    await supabase.from("chat_sessions").delete().eq("id", id);
+    // Delete messages first (FK dependency)
+    const { error: msgErr } = await supabase.from("chat_messages").delete().eq("session_id", id);
+    if (msgErr) console.error("Failed to delete messages:", msgErr);
+    // Delete the session
+    const { error: sessErr } = await supabase.from("chat_sessions").delete().eq("id", id);
+    if (sessErr) {
+      console.error("Failed to delete session:", sessErr);
+      // Refetch to restore accurate state
+      await fetchSessions();
+    }
   };
 
   const getMessages = async (sessionId: string): Promise<ChatMessage[]> => {

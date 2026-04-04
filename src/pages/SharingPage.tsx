@@ -155,10 +155,14 @@ const SharingPage = () => {
                   );
                 })}
               </div>
-              <button onClick={handleShare}
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
-                Share Calendar
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => { setShowShare(false); setEmail(""); }} className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98] transition-transform">
+                  Cancel
+                </button>
+                <button onClick={handleShare} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
+                  Done
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
