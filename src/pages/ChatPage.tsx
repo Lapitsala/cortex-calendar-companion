@@ -89,15 +89,42 @@ const ChatPage = () => {
     setShowHistory(false);
   };
 
-  const parseEventActions = (text: string) => {
+  const parseEventActions = async (text: string) => {
     const regex = /\[EVENT_CREATE\]([\s\S]*?)\[\/EVENT_CREATE\]/g;
     let match;
     while ((match = regex.exec(text)) !== null) {
       try {
         const eventData = JSON.parse(match[1]);
-        toast.message(`Suggested event detected: ${eventData.title || "Untitled Event"}. Please create it manually and confirm.`);
+        const startTime = eventData.start_time
+          ? eventData.start_time.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)/i, (_: string, h: string, m: string, ap: string) => {
+              let hour = parseInt(h);
+              if (ap.toUpperCase() === "PM" && hour !== 12) hour += 12;
+              if (ap.toUpperCase() === "AM" && hour === 12) hour = 0;
+              return `${hour.toString().padStart(2, "0")}:${m}`;
+            })
+          : "09:00";
+        const endTime = eventData.end_time
+          ? eventData.end_time.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)/i, (_: string, h: string, m: string, ap: string) => {
+              let hour = parseInt(h);
+              if (ap.toUpperCase() === "PM" && hour !== 12) hour += 12;
+              if (ap.toUpperCase() === "AM" && hour === 12) hour = 0;
+              return `${hour.toString().padStart(2, "0")}:${m}`;
+            })
+          : null;
+
+        await createEvent({
+          title: eventData.title || "Untitled Event",
+          description: eventData.description || null,
+          event_date: eventData.date || new Date().toISOString().split("T")[0],
+          start_time: startTime,
+          end_time: endTime,
+          location: eventData.location || null,
+          priority: eventData.priority || "medium",
+        });
+        toast.success(`✅ Event "${eventData.title}" added to your calendar!`);
       } catch (e) {
-        console.error("Failed to parse event action:", e);
+        console.error("Failed to auto-create event:", e);
+        toast.error("Failed to create event from AI response");
       }
     }
   };
