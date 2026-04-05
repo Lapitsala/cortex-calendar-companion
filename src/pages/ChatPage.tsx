@@ -333,21 +333,33 @@ const ChatPage = () => {
 
   const handleDeleteSessionConfirm = async () => {
     if (!deleteSessionTarget) return;
-    await deleteSession(deleteSessionTarget);
-    if (deleteSessionTarget === activeSessionId) {
-      startNewChat();
+
+    try {
+      await deleteSession(deleteSessionTarget);
+      if (deleteSessionTarget === activeSessionId) {
+        await startNewChat();
+      }
+      toast.success("Chat deleted");
+    } catch {
+      toast.error("Failed to delete chat");
+    } finally {
+      setDeleteSessionTarget(null);
     }
-    setDeleteSessionTarget(null);
-    toast.success("Chat deleted");
   };
 
   const handleBulkDelete = async (ids: string[]) => {
-    for (const id of ids) {
-      await deleteSession(id);
-    }
+    const results = await Promise.allSettled(ids.map((id) => deleteSession(id)));
+    const failedCount = results.filter((result) => result.status === "rejected").length;
+
     if (ids.includes(activeSessionId || "")) {
-      startNewChat();
+      await startNewChat();
     }
+
+    if (failedCount > 0) {
+      toast.error(`Failed to delete ${failedCount} chat${failedCount > 1 ? "s" : ""}`);
+      return;
+    }
+
     toast.success(`${ids.length} chat${ids.length > 1 ? "s" : ""} deleted`);
   };
 

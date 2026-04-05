@@ -21,6 +21,11 @@ export interface ChatMessage {
 
 const GUEST_SESSION_IDS_KEY = "guest_chat_session_ids";
 
+const hasGuestSessionStore = () => {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(GUEST_SESSION_IDS_KEY) !== null;
+};
+
 const readGuestSessionIds = (): string[] => {
   if (typeof window === "undefined") return [];
 
@@ -59,29 +64,44 @@ export const useChatSessions = () => {
   const fetchSessions = useCallback(async () => {
     setLoading(true);
 
-    const { data, error } = user
-      ? await supabase
+    let data: ChatSession[] | null = null;
+    let error: unknown = null;
+
+    if (user) {
+      const response = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+
+      data = (response.data as ChatSession[]) || [];
+      error = response.error;
+    } else {
+      const guestIds = readGuestSessionIds();
+
+      if (guestIds.length > 0) {
+        const response = await supabase
           .from("chat_sessions")
           .select("*")
-          .eq("user_id", user.id)
-          .order("updated_at", { ascending: false })
-      : (() => {
-          const guestIds = readGuestSessionIds();
-          if (guestIds.length > 0) {
-            return supabase
-              .from("chat_sessions")
-              .select("*")
-              .is("user_id", null)
-              .in("id", guestIds)
-              .order("updated_at", { ascending: false });
-          }
+          .is("user_id", null)
+          .in("id", guestIds)
+          .order("updated_at", { ascending: false });
 
-          return supabase
-            .from("chat_sessions")
-            .select("*")
-            .is("user_id", null)
-            .order("updated_at", { ascending: false });
-        })();
+        data = (response.data as ChatSession[]) || [];
+        error = response.error;
+      } else if (hasGuestSessionStore()) {
+        data = [];
+      } else {
+        const response = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .is("user_id", null)
+          .order("updated_at", { ascending: false });
+
+        data = (response.data as ChatSession[]) || [];
+        error = response.error;
+      }
+    }
 
     if (error) {
       console.error("Failed to fetch chat sessions:", error);
@@ -89,7 +109,7 @@ export const useChatSessions = () => {
       return;
     }
 
-    const nextSessions = (data as ChatSession[]) || [];
+    const nextSessions = data || [];
 
     if (!user) {
       writeGuestSessionIds(nextSessions.map((session) => session.id));
