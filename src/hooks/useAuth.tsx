@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
 type User = Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"];
 type Session = Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"];
@@ -8,6 +8,7 @@ interface AuthContext {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isPreviewMode: boolean;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ requiresEmailVerification: boolean }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -21,15 +22,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setLoading(false);
+    }).catch((error) => {
+      console.error("Failed to read auth session:", error);
       setLoading(false);
     });
 
@@ -37,6 +46,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
+    if (!isSupabaseConfigured) {
+      console.warn("Preview mode: sign up is disabled.");
+      return { requiresEmailVerification: false };
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -53,16 +67,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      console.warn("Preview mode: sign in is disabled.");
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
   const signOut = async () => {
+    if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthCtx.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthCtx.Provider value={{ user, session, loading, isPreviewMode: !isSupabaseConfigured, signUp, signIn, signOut }}>
       {children}
     </AuthCtx.Provider>
   );
