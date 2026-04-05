@@ -19,26 +19,103 @@ export interface ChatMessage {
   created_at: string;
 }
 
+const GUEST_SESSION_IDS_KEY = "guest_chat_session_ids";
+
+const hasGuestSessionStore = () => {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(GUEST_SESSION_IDS_KEY) !== null;
+};
+
+const readGuestSessionIds = (): string[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(GUEST_SESSION_IDS_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return Array.from(new Set(parsed.filter((id): id is string => typeof id === "string" && id.length > 0)));
+  } catch {
+    return [];
+  }
+};
+
+const writeGuestSessionIds = (ids: string[]) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(GUEST_SESSION_IDS_KEY, JSON.stringify(Array.from(new Set(ids))));
+};
+
+const rememberGuestSessionIds = (ids: string[]) => {
+  if (ids.length === 0) return;
+  writeGuestSessionIds([...readGuestSessionIds(), ...ids]);
+};
+
+const forgetGuestSessionId = (id: string) => {
+  writeGuestSessionIds(readGuestSessionIds().filter((savedId) => savedId !== id));
+};
+
 export const useChatSessions = () => {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchSessions = useCallback(async () => {
-    let query = supabase
-      .from("chat_sessions")
-      .select("*")
-      .order("updated_at", { ascending: false });
+    setLoading(true);
+
+    let data: ChatSession[] | null = null;
+    let error: unknown = null;
 
     if (user) {
-      query = query.eq("user_id", user.id);
+      const response = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+
+      data = (response.data as ChatSession[]) || [];
+      error = response.error;
     } else {
-      query = query.is("user_id", null);
+      const guestIds = readGuestSessionIds();
+
+      if (guestIds.length > 0) {
+        const response = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .is("user_id", null)
+          .in("id", guestIds)
+          .order("updated_at", { ascending: false });
+
+        data = (response.data as ChatSession[]) || [];
+        error = response.error;
+      } else if (hasGuestSessionStore()) {
+        data = [];
+      } else {
+        const response = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .is("user_id", null)
+          .order("updated_at", { ascending: false });
+
+        data = (response.data as ChatSession[]) || [];
+        error = response.error;
+      }
     }
 
-    const { data, error } = await query;
-    if (error) { console.error(error); setLoading(false); return; }
-    setSessions((data as ChatSession[]) || []);
+    if (error) {
+      console.error("Failed to fetch chat sessions:", error);
+      setLoading(false);
+      return;
+    }
+
+    const nextSessions = data || [];
+
+    if (!user) {
+      writeGuestSessionIds(nextSessions.map((session) => session.id));
+    }
+
+    setSessions(nextSessions);
     setLoading(false);
   }, [user]);
 
@@ -57,9 +134,16 @@ export const useChatSessions = () => {
       .insert({ title, user_id: user?.id })
       .select()
       .single();
+
     if (error) throw error;
+
     const created = data as ChatSession;
-    setSessions((prev) => [created, ...prev]);
+
+    if (!user) {
+      rememberGuestSessionIds([created.id]);
+    }
+
+    setSessions((prev) => [created, ...prev.filter((session) => session.id !== created.id)]);
     return created;
   };
 
@@ -71,17 +155,48 @@ export const useChatSessions = () => {
   };
 
   const deleteSession = async (id: string) => {
-    // Optimistic UI removal
-    setSessions((prev) => prev.filter((s) => s.id !== id));
-    // Delete messages first (FK dependency)
-    const { error: msgErr } = await supabase.from("chat_messages").delete().eq("session_id", id);
-    if (msgErr) console.error("Failed to delete messages:", msgErr);
-    // Delete the session
-    const { error: sessErr } = await supabase.from("chat_sessions").delete().eq("id", id);
-    if (sessErr) {
-      console.error("Failed to delete session:", sessErr);
-      // Refetch to restore accurate state
+    const previousSessions = sessions;
+    setSessions((prev) => prev.filter((session) => session.id !== id));
+
+    try {
+      const { error: msgErr } = await supabase
+        .from("chat_messages")
+        .delete()
+        .eq("session_id", id);
+
+      if (msgErr) throw msgErr;
+
+      const { data: deletedRows, error: sessErr } = await supabase
+        .from("chat_sessions")
+        .delete()
+        .eq("id", id)
+        .select("id");
+
+      if (sessErr) throw sessErr;
+
+      const deleted = Array.isArray(deletedRows) && deletedRows.some((row) => row.id === id);
+
+      if (!deleted) {
+        const { data: existingRow, error: verifyErr } = await supabase
+          .from("chat_sessions")
+          .select("id")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (verifyErr) throw verifyErr;
+        if (existingRow) throw new Error("Chat session still exists after delete attempt");
+      }
+
+      if (!user) {
+        forgetGuestSessionId(id);
+      }
+
       await fetchSessions();
+    } catch (error) {
+      console.error("Failed to delete chat session:", error);
+      setSessions(previousSessions);
+      await fetchSessions();
+      throw error;
     }
   };
 
@@ -112,7 +227,6 @@ export const useChatSessions = () => {
     return data as ChatMessage;
   };
 
-  // Cleanup: remove empty sessions (no messages) with no meaningful interaction.
   const cleanupEmptySessions = async (activeSessionId?: string) => {
     for (const session of sessions) {
       if (session.id === activeSessionId) continue;
