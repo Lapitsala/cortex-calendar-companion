@@ -34,7 +34,7 @@ const ChatPage = () => {
   const [searchParams] = useSearchParams();
 
   const { sessions, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
-  const { events } = useCalendarEvents();
+  const { events, createEvent } = useCalendarEvents();
   const welcomeMessage: LocalMessage = {
     id: "welcome",
     role: "assistant",
