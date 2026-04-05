@@ -41,7 +41,7 @@ const sections: { title: string; items: SettingItem[] }[] = [
 ];
 
 const SettingsPage = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isPreviewMode } = useAuth();
   const [settings, setSettings] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     sections.forEach(s => s.items.forEach(i => { map[i.label] = i.value; }));
@@ -74,8 +74,8 @@ const SettingsPage = () => {
             <User className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
-            <p className="text-xs text-muted-foreground">Signed in</p>
+            <p className="text-sm font-medium text-foreground truncate">{user?.email || "Preview user"}</p>
+            <p className="text-xs text-muted-foreground">{isPreviewMode ? "Preview mode (no backend credentials)" : "Signed in"}</p>
           </div>
         </div>
 
@@ -100,12 +100,12 @@ const SettingsPage = () => {
         ))}
 
         {/* Sign out */}
-        <button
+        {!isPreviewMode && (<button
           onClick={handleSignOut}
           className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
         >
           <LogOut className="w-4 h-4" /> Sign Out
-        </button>
+        </button>)}
       </div>
 
       {/* Options sheet */}

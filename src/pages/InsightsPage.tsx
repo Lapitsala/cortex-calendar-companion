@@ -3,12 +3,26 @@ import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { Switch } from "@/components/ui/switch";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { featureStatusLabel, systemFeatures } from "@/lib/systemFeatures";
+import { useAuth } from "@/hooks/useAuth";
 
 const InsightsPage = () => {
   const { events } = useCalendarEvents();
+  const { isPreviewMode } = useAuth();
   const [range, setRange] = useState<"month" | "year">("month");
   const [analyticsEnabled, setAnalyticsEnabled] = useState(localStorage.getItem("analytics_enabled") !== "false");
   const now = new Date();
+
+
+  const featureSummary = useMemo(() => {
+    return systemFeatures.reduce(
+      (acc, feature) => {
+        acc[feature.status] += 1;
+        return acc;
+      },
+      { implemented: 0, partial: 0, planned: 0 },
+    );
+  }, []);
 
   const periodEvents = useMemo(() => events.filter((e) => {
     const d = new Date(`${e.event_date}T00:00:00`);
@@ -69,6 +83,12 @@ const InsightsPage = () => {
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <div className="bg-card border border-border rounded-xl p-3 text-xs text-muted-foreground">Your data is analyzed locally to protect your privacy.</div>
+
+        {isPreviewMode && (
+          <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 text-xs text-foreground">
+            Running in preview mode: backend credentials are missing, so Cortex uses local demo data to keep Lovable preview fully interactive.
+          </div>
+        )}
         <div className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">Enable Analytics</span>
           <Switch checked={analyticsEnabled} onCheckedChange={toggleAnalytics} />
@@ -77,6 +97,43 @@ const InsightsPage = () => {
         <div className="flex gap-2">
           <button onClick={() => setRange("month")} className={`flex-1 py-2 rounded-xl text-sm ${range === "month" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>Monthly</button>
           <button onClick={() => setRange("year")} className={`flex-1 py-2 rounded-xl text-sm ${range === "year" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>Yearly</button>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">System Feature Progress</h3>
+            <p className="text-xs text-muted-foreground">Delivery map for FR-01 through FR-13.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg bg-secondary p-2">
+              <p className="text-[11px] text-muted-foreground">Implemented</p>
+              <p className="text-base font-semibold text-foreground">{featureSummary.implemented}</p>
+            </div>
+            <div className="rounded-lg bg-secondary p-2">
+              <p className="text-[11px] text-muted-foreground">In Progress</p>
+              <p className="text-base font-semibold text-foreground">{featureSummary.partial}</p>
+            </div>
+            <div className="rounded-lg bg-secondary p-2">
+              <p className="text-[11px] text-muted-foreground">Planned</p>
+              <p className="text-base font-semibold text-foreground">{featureSummary.planned}</p>
+            </div>
+          </div>
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+            {systemFeatures.map((feature) => (
+              <div key={feature.id} className="rounded-xl border border-border p-3">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{feature.id}</p>
+                    <h4 className="text-sm font-medium text-foreground">{feature.title}</h4>
+                  </div>
+                  <span className="text-[11px] rounded-full bg-primary/10 text-primary px-2 py-0.5 whitespace-nowrap">
+                    {featureStatusLabel[feature.status]}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-1">{feature.summary}</p>
+                <p className="text-xs text-foreground"><span className="font-medium">Next:</span> {feature.nextMilestone}</p>
+              </div>
+            ))}
+          </div>
         </div>
         {analyticsEnabled && (
           <>

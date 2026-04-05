@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -17,6 +17,37 @@ export interface CalendarEvent {
   updated_at: string;
 }
 
+const LOCAL_KEY = "preview_calendar_events";
+
+const loadLocalEvents = (): CalendarEvent[] => {
+  const raw = localStorage.getItem(LOCAL_KEY);
+  if (raw) return JSON.parse(raw) as CalendarEvent[];
+
+  const today = new Date();
+  const format = (d: Date) => d.toISOString().split("T")[0];
+  const defaults: CalendarEvent[] = [
+    {
+      id: crypto.randomUUID(),
+      title: "Welcome to Cortex Preview",
+      description: "This demo event appears when Supabase keys are not configured.",
+      event_date: format(today),
+      start_time: "09:00",
+      end_time: "10:00",
+      location: "Local preview mode",
+      priority: "medium",
+      user_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ];
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(defaults));
+  return defaults;
+};
+
+const saveLocalEvents = (events: CalendarEvent[]) => {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(events));
+};
+
 export const useCalendarEvents = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -24,6 +55,12 @@ export const useCalendarEvents = () => {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const fetchEvents = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setEvents(loadLocalEvents());
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("calendar_events")
@@ -45,7 +82,8 @@ export const useCalendarEvents = () => {
   useEffect(() => {
     fetchEvents();
 
-    // Clean up any previous channel before creating a new one
+    if (!isSupabaseConfigured) return;
+
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -72,9 +110,23 @@ export const useCalendarEvents = () => {
         channelRef.current = null;
       }
     };
-  }, [user?.id]);
+  }, [user?.id, fetchEvents]);
 
   const createEvent = async (event: Omit<CalendarEvent, "id" | "created_at" | "updated_at" | "user_id">) => {
+    if (!isSupabaseConfigured) {
+      const created: CalendarEvent = {
+        ...event,
+        id: crypto.randomUUID(),
+        user_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const next = [...events, created].sort((a, b) => a.event_date.localeCompare(b.event_date));
+      setEvents(next);
+      saveLocalEvents(next);
+      return created;
+    }
+
     const { data, error } = await supabase
       .from("calendar_events")
       .insert({ ...event, user_id: user?.id })
@@ -88,6 +140,15 @@ export const useCalendarEvents = () => {
   };
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
+    if (!isSupabaseConfigured) {
+      const next = events.map((event) =>
+        event.id === id ? { ...event, ...updates, updated_at: new Date().toISOString() } : event,
+      );
+      setEvents(next);
+      saveLocalEvents(next);
+      return;
+    }
+
     const { error } = await supabase
       .from("calendar_events")
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -99,6 +160,13 @@ export const useCalendarEvents = () => {
   };
 
   const deleteEvent = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      const next = events.filter((event) => event.id !== id);
+      setEvents(next);
+      saveLocalEvents(next);
+      return;
+    }
+
     const { error } = await supabase
       .from("calendar_events")
       .delete()
@@ -113,5 +181,5 @@ export const useCalendarEvents = () => {
     return events.filter(e => e.event_date === date);
   }, [events]);
 
-  return { events, loading, createEvent, updateEvent, deleteEvent, getEventsForDate, refetch: fetchEvents };
+  return { events, loading, createEvent, updateEvent, deleteEvent, getEventsForDate, refetch: fetchEvents, isPreviewMode: !isSupabaseConfigured };
 };
