@@ -29,7 +29,6 @@ export const useCalendarShares = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchShares = useCallback(async () => {
-    if (!user) return;
 
     // Shares I created
     const { data: byMe } = await supabase
