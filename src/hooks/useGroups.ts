@@ -38,7 +38,6 @@ export const useGroups = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchGroups = useCallback(async () => {
-    if (!user) return;
     const { data, error } = await supabase
       .from("groups")
       .select("*")
