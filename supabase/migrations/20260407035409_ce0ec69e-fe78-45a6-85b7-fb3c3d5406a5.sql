@@ -1,0 +1,7 @@
+
+-- Re-enable RLS on all tables
+ALTER TABLE public.groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.calendar_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_availability ENABLE ROW LEVEL SECURITY;
