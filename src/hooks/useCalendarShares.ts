@@ -31,16 +31,14 @@ export const useCalendarShares = () => {
   const fetchShares = useCallback(async () => {
 
     // Shares I created
-    const { data: byMe } = await supabase
-      .from("calendar_shares")
-      .select("*")
-      .eq("owner_id", user.id);
+    let byMeQuery = supabase.from("calendar_shares").select("*");
+    if (user) byMeQuery = byMeQuery.eq("owner_id", user.id);
+    const { data: byMe } = await byMeQuery;
 
     // Shares shared with me
-    const { data: withMe } = await supabase
-      .from("calendar_shares")
-      .select("*")
-      .eq("shared_with_id", user.id);
+    let withMeQuery = supabase.from("calendar_shares").select("*");
+    if (user) withMeQuery = withMeQuery.eq("shared_with_id", user.id);
+    const { data: withMe } = await withMeQuery;
 
     // Enrich with profile data
     const enrichShares = async (shares: any[], lookupField: "owner_id" | "shared_with_id") => {
