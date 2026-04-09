@@ -232,8 +232,10 @@ const GroupsPage = () => {
               )}
 
               {/* Find common time */}
-              <button className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-                <Clock className="w-4 h-4" /> Find Common Time
+              <button
+                onClick={() => navigate(`/chat?event=Find a common meeting time for the group "${selectedGroup.name}"`)}
+                className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                <Clock className="w-4 h-4" /> Find Common Time with AI
               </button>
             </motion.div>
           </motion.div>
