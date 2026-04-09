@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Share2, X, Check, XCircle, Trash2, Eye, EyeOff, ChevronRight } from "lucide-react";
-import { useCalendarShares, ShareLevel } from "@/hooks/useCalendarShares";
+import { useCalendarShares, ShareLevel, CalendarShareWithProfile } from "@/hooks/useCalendarShares";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import SharedCalendarView from "@/components/SharedCalendarView";
 import { toast } from "sonner";
 import EventCreateModal from "@/components/EventCreateModal";
 
@@ -19,6 +20,7 @@ const SharingPage = () => {
   const [level, setLevel] = useState<ShareLevel>("limited");
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [viewingShare, setViewingShare] = useState<CalendarShareWithProfile | null>(null);
 
   const handleShare = async () => {
     if (!email.trim()) {
@@ -78,16 +80,20 @@ const SharingPage = () => {
             <p className="text-center text-sm text-muted-foreground py-6">No shared calendars yet</p>
           )}
           {sharedWithMe.filter(s => s.status === "accepted").map(share => (
-            <div key={share.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+            <button
+              key={share.id}
+              onClick={() => setViewingShare(share)}
+              className="w-full text-left bg-card border border-border rounded-xl p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+            >
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
                 <Share2 className="w-5 h-5 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{share.owner_name || share.owner_email || "Calendar"}</p>
-                <p className="text-xs text-muted-foreground">{shareLevelLabels[share.share_level as ShareLevel]?.desc}</p>
+                <p className="text-xs text-muted-foreground">{shareLevelLabels[share.share_level as ShareLevel]?.desc} • Tap to view</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </div>
+            </button>
           ))}
         </div>
 
@@ -181,6 +187,18 @@ const SharingPage = () => {
         onClose={() => setShowCreateEvent(false)}
         title="Create Shared Event"
       />
+
+      {/* Shared Calendar Viewer */}
+      <AnimatePresence>
+        {viewingShare && (
+          <SharedCalendarView
+            ownerUserId={viewingShare.owner_id}
+            ownerName={viewingShare.owner_name || viewingShare.owner_email || "Shared Calendar"}
+            shareLevel={viewingShare.share_level as ShareLevel}
+            onBack={() => setViewingShare(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
