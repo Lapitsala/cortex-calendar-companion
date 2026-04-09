@@ -187,6 +187,18 @@ const SharingPage = () => {
         onClose={() => setShowCreateEvent(false)}
         title="Create Shared Event"
       />
+
+      {/* Shared Calendar Viewer */}
+      <AnimatePresence>
+        {viewingShare && (
+          <SharedCalendarView
+            ownerUserId={viewingShare.owner_id}
+            ownerName={viewingShare.owner_name || viewingShare.owner_email || "Shared Calendar"}
+            shareLevel={viewingShare.share_level as ShareLevel}
+            onBack={() => setViewingShare(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
