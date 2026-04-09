@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Share2, X, Check, XCircle, Trash2, Eye, EyeOff, ChevronRight } from "lucide-react";
-import { useCalendarShares, ShareLevel } from "@/hooks/useCalendarShares";
+import { useCalendarShares, ShareLevel, CalendarShareWithProfile } from "@/hooks/useCalendarShares";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import SharedCalendarView from "@/components/SharedCalendarView";
 import { toast } from "sonner";
 import EventCreateModal from "@/components/EventCreateModal";
 
@@ -19,6 +20,7 @@ const SharingPage = () => {
   const [level, setLevel] = useState<ShareLevel>("limited");
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [viewingShare, setViewingShare] = useState<CalendarShareWithProfile | null>(null);
 
   const handleShare = async () => {
     if (!email.trim()) {
