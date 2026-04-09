@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 const GroupsPage = () => {
   const { user } = useAuth();
   const { groups, createGroup, deleteGroup, getMembers, inviteMember, respondToInvite } = useGroups();
+  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
