@@ -30,6 +30,14 @@ Key behaviors:
 - If the user's request is unclear, ask for clarification
 - If there's a scheduling conflict, point it out and suggest alternatives
 
+GROUP SCHEDULING:
+- When the user asks to find a common time for a group, analyze the group members' availability
+- Suggest 2-3 time slots that could work for everyone
+- Consider typical working hours (9 AM - 6 PM) unless told otherwise
+- Ask about meeting duration if not specified
+- After the user confirms a time slot, create the event using the EVENT_CREATE block
+- When presenting available times, format them clearly with day, date, and time
+
 IMAGE/OCR HANDLING:
 - When the user sends an image, carefully analyze it for any event-related information
 - Extract: dates, times, locations, event titles, deadlines, assignments, schedules
@@ -46,8 +54,6 @@ When the user confirms they want to create an event, include this exact block in
 Only include this block AFTER the user confirms the event details. Always ask for confirmation first.
 ${calendarInfo}`;
 
-    // Messages can now contain multimodal content (text + images)
-    // The Gemini model supports vision natively
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
