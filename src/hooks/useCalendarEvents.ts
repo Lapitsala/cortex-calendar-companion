@@ -89,17 +89,15 @@ export const useCalendarEvents = () => {
       channelRef.current = null;
     }
 
-    try {
-      const channel = supabase
-        .channel(`cal_events_${Date.now()}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "calendar_events" },
-          () => fetchEvents()
-        )
-        .subscribe();
-
-      channelRef.current = channel;
+    const channelName = `cal_events_${user?.id || 'anon'}_${Date.now()}`;
+    const channel = supabase.channel(channelName);
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "calendar_events" },
+      () => fetchEvents()
+    );
+    channel.subscribe();
+    channelRef.current = channel;
     } catch (e) {
       console.error("Realtime subscription error:", e);
     }
