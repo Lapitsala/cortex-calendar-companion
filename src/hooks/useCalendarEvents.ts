@@ -98,9 +98,6 @@ export const useCalendarEvents = () => {
     );
     channel.subscribe();
     channelRef.current = channel;
-    } catch (e) {
-      console.error("Realtime subscription error:", e);
-    }
 
     return () => {
       if (channelRef.current) {
