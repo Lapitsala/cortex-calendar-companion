@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import EventCreateModal from "@/components/EventCreateModal";
+import { useNavigate } from "react-router-dom";
 
 const GroupsPage = () => {
   const { user } = useAuth();
