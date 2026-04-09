@@ -90,13 +90,14 @@ export const useCalendarEvents = () => {
     }
 
     const channelName = `cal_events_${user?.id || 'anon'}_${Date.now()}`;
-    const channel = supabase.channel(channelName);
-    channel.on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "calendar_events" },
-      () => fetchEvents()
-    );
-    channel.subscribe();
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "calendar_events" },
+        () => fetchEvents()
+      )
+      .subscribe();
     channelRef.current = channel;
 
     return () => {
