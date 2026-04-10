@@ -177,6 +177,30 @@ const ChatPage = () => {
     return "\n\nUser's groups:\n" + parts.join("\n");
   };
 
+  const buildSharedCalendarContext = async () => {
+    const accepted = sharedWithMe.filter(s => s.status === "accepted");
+    if (accepted.length === 0) return "";
+    const parts: string[] = [];
+    for (const share of accepted) {
+      const ownerName = share.owner_name || share.owner_email || share.owner_id.slice(0, 8);
+      const { data: sharedEvents } = await supabase
+        .from("calendar_events")
+        .select("*")
+        .eq("user_id", share.owner_id)
+        .order("event_date", { ascending: true })
+        .limit(30);
+      if (sharedEvents && sharedEvents.length > 0) {
+        const eventList = sharedEvents.map((e: any) =>
+          `  - ${e.title} on ${e.event_date} at ${e.start_time}${e.end_time ? `-${e.end_time}` : ""}${e.location ? ` (${e.location})` : ""} [${e.priority}]`
+        ).join("\n");
+        parts.push(`${ownerName}'s calendar (shared with you, level: ${share.share_level}):\n${eventList}`);
+      } else {
+        parts.push(`${ownerName}'s calendar (shared with you): no upcoming events`);
+      }
+    }
+    return "\n\nShared calendars (personal sharing, NOT groups):\n" + parts.join("\n\n");
+  };
+
   const handleSend = async (text?: string) => {
     const msg = text || input.trim();
     const hasImage = !!pendingImage;
