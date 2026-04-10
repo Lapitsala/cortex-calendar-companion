@@ -1,0 +1,1 @@
+ALTER TABLE public.calendar_events DROP CONSTRAINT calendar_events_user_id_fkey;
