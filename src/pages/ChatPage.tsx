@@ -245,6 +245,7 @@ const ChatPage = () => {
 
     // Build group context for scheduling
     const groupContext = await buildGroupContext();
+    const sharedCalContext = await buildSharedCalendarContext();
 
     const apiMessages = updatedMessages.map(m => {
       if (m.imageUrl) {
@@ -265,7 +266,7 @@ const ChatPage = () => {
         },
         body: JSON.stringify({
           messages: apiMessages,
-          calendarContext: upcomingEvents + groupContext,
+          calendarContext: upcomingEvents + groupContext + sharedCalContext,
         }),
       });
 
