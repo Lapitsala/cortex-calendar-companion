@@ -8,6 +8,7 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useGroups } from "@/hooks/useGroups";
+import { useCalendarShares } from "@/hooks/useCalendarShares";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 
