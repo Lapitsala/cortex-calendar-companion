@@ -89,7 +89,7 @@ export const useCalendarEvents = () => {
       channelRef.current = null;
     }
 
-    const channelName = `cal_events_${user?.id || 'anon'}_${Date.now()}`;
+    const channelName = `cal_events_${user?.id || 'anon'}_${crypto.randomUUID()}`;
     const channel = supabase.channel(channelName);
     channel
       .on(
