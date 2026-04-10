@@ -39,6 +39,7 @@ const ChatPage = () => {
   const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
   const { events, createEvent } = useCalendarEvents();
   const { groups, getMembers } = useGroups();
+  const { sharedWithMe } = useCalendarShares();
 
   const welcomeMessage: LocalMessage = {
     id: "welcome",
