@@ -12,6 +12,7 @@ import SettingsPage from "./pages/SettingsPage";
 import GroupsPage from "./pages/GroupsPage";
 import SharingPage from "./pages/SharingPage";
 import AuthPage from "./pages/AuthPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
