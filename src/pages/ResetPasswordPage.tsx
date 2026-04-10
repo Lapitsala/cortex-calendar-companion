@@ -13,14 +13,26 @@ const ResetPasswordPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for recovery token in URL hash
+    // Check for recovery token in URL hash or query params
     const hash = window.location.hash;
-    if (hash.includes("type=recovery")) {
+    const search = window.location.search;
+    if (hash.includes("type=recovery") || search.includes("type=recovery")) {
       setIsRecovery(true);
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
+        setIsRecovery(true);
+      }
+      // If user landed here with an active session (recovery link auto-logs in), allow reset
+      if (event === "SIGNED_IN" && session) {
+        setIsRecovery(true);
+      }
+    });
+
+    // Also check if user already has an active session (recovery redirect already processed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setIsRecovery(true);
       }
     });
