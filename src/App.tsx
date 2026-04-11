@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import ChatPage from "./pages/ChatPage";
 import CalendarPage from "./pages/CalendarPage";
 import InsightsPage from "./pages/InsightsPage";
+import ClassroomPage from "./pages/ClassroomPage";
 import SettingsPage from "./pages/SettingsPage";
 import GroupsPage from "./pages/GroupsPage";
 import SharingPage from "./pages/SharingPage";
@@ -38,6 +39,7 @@ const ProtectedRoutes = () => {
         <Route path="/" element={<CalendarPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/insights" element={<InsightsPage />} />
+        <Route path="/classroom" element={<ClassroomPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/sharing" element={<SharingPage />} />
