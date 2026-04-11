@@ -55,7 +55,8 @@ const ClassroomPage = () => {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncedIds, setSyncedIds] = useState<Set<string>>(new Set());
-  const [isConnected] = useState(true); // demo: always connected
+  const [isConnected] = useState(true);
+  const { createEvent } = useCalendarEvents();
 
   const filteredAssignments = MOCK_ASSIGNMENTS.filter((a) => {
     if (selectedCourse && a.courseId !== selectedCourse) return false;
@@ -66,23 +67,47 @@ const ClassroomPage = () => {
 
   const getCourse = (courseId: string) => MOCK_COURSES.find((c) => c.id === courseId)!;
 
-  const handleSyncAll = async () => {
-    setSyncing(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    const newSynced = new Set(syncedIds);
-    filteredAssignments.forEach((a) => {
-      if (a.status !== "submitted") newSynced.add(a.id);
+  const syncAssignmentToCalendar = async (assignment: Assignment) => {
+    const course = getCourse(assignment.courseId);
+    await createEvent({
+      title: `📚 ${assignment.title}`,
+      description: `[${course.name}] ${assignment.description}\nPoints: ${assignment.points}`,
+      event_date: assignment.dueDate,
+      start_time: assignment.dueTime,
+      end_time: null,
+      location: null,
+      priority: assignment.status === "overdue" ? "high" : assignment.status === "due_soon" ? "medium" : "low",
     });
-    setSyncedIds(newSynced);
-    setSyncing(false);
-    toast.success(`Synced ${filteredAssignments.filter((a) => a.status !== "submitted").length} assignments to calendar`);
   };
 
-  const handleSyncOne = (assignment: Assignment) => {
-    const newSynced = new Set(syncedIds);
-    newSynced.add(assignment.id);
-    setSyncedIds(newSynced);
-    toast.success(`"${assignment.title}" added to calendar`);
+  const handleSyncAll = async () => {
+    setSyncing(true);
+    const toSync = filteredAssignments.filter((a) => a.status !== "submitted" && !syncedIds.has(a.id));
+    try {
+      for (const a of toSync) {
+        await syncAssignmentToCalendar(a);
+      }
+      const newSynced = new Set(syncedIds);
+      toSync.forEach((a) => newSynced.add(a.id));
+      setSyncedIds(newSynced);
+      toast.success(`Synced ${toSync.length} assignments to calendar`);
+    } catch {
+      toast.error("Failed to sync some assignments");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleSyncOne = async (assignment: Assignment) => {
+    try {
+      await syncAssignmentToCalendar(assignment);
+      const newSynced = new Set(syncedIds);
+      newSynced.add(assignment.id);
+      setSyncedIds(newSynced);
+      toast.success(`"${assignment.title}" added to calendar`);
+    } catch {
+      toast.error("Failed to sync assignment");
+    }
   };
 
   const tabs: { key: TabType; label: string; count: number }[] = [
