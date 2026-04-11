@@ -365,6 +365,7 @@ const ChatPage = () => {
   const quickActions = [
     { label: "Schedule a meeting tomorrow at 3 PM", icon: "📅" },
     { label: "What's on my calendar this week?", icon: "🗓️" },
+    { label: "What assignments are due soon?", icon: "📚" },
     { label: "Help me plan my study schedule", icon: "🎯" },
     { label: "Find a common time for Cortext-Team", icon: "👥" },
   ];
