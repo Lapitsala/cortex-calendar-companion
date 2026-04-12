@@ -59,6 +59,7 @@ export const useWantToDo = () => {
         user_id: null,
         is_completed: false,
         synced_event_id: null,
+        chat_session_id: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
