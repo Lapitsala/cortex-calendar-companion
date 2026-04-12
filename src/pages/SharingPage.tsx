@@ -142,7 +142,7 @@ const SharingPage = () => {
       <AnimatePresence>
         {showShare && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowShare(false)}>
+            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setShowShare(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-[calc(100vh-4rem)] overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
               <div className="flex items-center justify-between">
@@ -188,7 +188,7 @@ const SharingPage = () => {
       <AnimatePresence>
         {editingShare && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setEditingShare(null)}>
+            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setEditingShare(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
               <div className="flex items-center justify-between">

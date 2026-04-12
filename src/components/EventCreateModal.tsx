@@ -101,7 +101,7 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center"
+          className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center"
           onClick={handleCancel}
         >
           <motion.div
