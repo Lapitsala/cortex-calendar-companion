@@ -161,7 +161,7 @@ const GroupsPage = () => {
       <AnimatePresence>
         {showCreate && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center pb-24" onClick={() => setShowCreate(false)}>
+            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowCreate(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
               <div className="flex items-center justify-between">
@@ -191,7 +191,7 @@ const GroupsPage = () => {
       <AnimatePresence>
         {selectedGroup && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center pb-24" onClick={() => setSelectedGroup(null)}>
+            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setSelectedGroup(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
               <div className="flex items-center justify-between">
