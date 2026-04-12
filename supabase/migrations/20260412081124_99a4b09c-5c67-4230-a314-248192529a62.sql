@@ -1,0 +1,1 @@
+ALTER TABLE public.want_to_do ADD COLUMN chat_session_id uuid REFERENCES public.chat_sessions(id) ON DELETE SET NULL;
