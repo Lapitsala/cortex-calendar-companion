@@ -36,6 +36,7 @@ const ChatPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
   const { events, createEvent } = useCalendarEvents();
@@ -52,6 +53,16 @@ const ChatPage = () => {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
+
+  // Handle prefill from Want-to-do page
+  useEffect(() => {
+    const prefill = (location.state as any)?.prefill;
+    if (prefill && initialized) {
+      // Clear state so it doesn't re-trigger
+      window.history.replaceState({}, document.title);
+      handleSend(prefill);
+    }
+  }, [initialized, location.state]);
 
   // Handle "Chat about this event" from calendar
   useEffect(() => {
