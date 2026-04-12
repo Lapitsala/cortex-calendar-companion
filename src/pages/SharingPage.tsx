@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Share2, X, Check, XCircle, Trash2, Eye, EyeOff, ChevronRight } from "lucide-react";
+import { Share2, X, Check, XCircle, Trash2, Eye, EyeOff, ChevronRight, Pencil } from "lucide-react";
 import { useCalendarShares, ShareLevel, CalendarShareWithProfile } from "@/hooks/useCalendarShares";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import SharedCalendarView from "@/components/SharedCalendarView";
@@ -14,13 +14,14 @@ const shareLevelLabels: Record<ShareLevel, { label: string; desc: string; icon: 
 };
 
 const SharingPage = () => {
-  const { sharedByMe, sharedWithMe, shareCalendar, respondToShare, revokeShare } = useCalendarShares();
+  const { sharedByMe, sharedWithMe, shareCalendar, respondToShare, revokeShare, updateShareLevel } = useCalendarShares();
   const [showShare, setShowShare] = useState(false);
   const [email, setEmail] = useState("");
   const [level, setLevel] = useState<ShareLevel>("limited");
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [viewingShare, setViewingShare] = useState<CalendarShareWithProfile | null>(null);
+  const [editingShare, setEditingShare] = useState<{ id: string; level: ShareLevel } | null>(null);
 
   const handleShare = async () => {
     if (!email.trim()) {
@@ -34,6 +35,12 @@ const SharingPage = () => {
     await shareCalendar(email, level);
     setEmail("");
     setShowShare(false);
+  };
+
+  const handleUpdateLevel = async () => {
+    if (!editingShare) return;
+    await updateShareLevel(editingShare.id, editingShare.level);
+    setEditingShare(null);
   };
 
   return (
@@ -112,6 +119,9 @@ const SharingPage = () => {
                 <p className="text-sm font-medium text-foreground">{share.shared_with_name || share.shared_with_email || "User"}</p>
                 <p className="text-xs text-muted-foreground">{shareLevelLabels[share.share_level as ShareLevel]?.desc} • {share.status}</p>
               </div>
+              <button onClick={() => setEditingShare({ id: share.id, level: share.share_level as ShareLevel })} className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-95">
+                <Pencil className="w-3.5 h-3.5 text-primary" />
+              </button>
               <button onClick={() => setRevokeTarget(share.id)} className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center active:scale-95">
                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
               </button>
@@ -132,9 +142,9 @@ const SharingPage = () => {
       <AnimatePresence>
         {showShare && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center pb-24" onClick={() => setShowShare(false)}>
+            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowShare(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-[calc(100vh-7rem)] overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-[calc(100vh-4rem)] overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">Share Calendar</h3>
                 <button onClick={() => setShowShare(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
@@ -161,12 +171,55 @@ const SharingPage = () => {
                   );
                 })}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 pb-safe">
                 <button onClick={() => { setShowShare(false); setEmail(""); }} className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98] transition-transform">
                   Cancel
                 </button>
                 <button onClick={handleShare} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
                   Done
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit share level modal */}
+      <AnimatePresence>
+        {editingShare && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setEditingShare(null)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-base font-bold text-foreground">Edit Sharing Level</h3>
+                <button onClick={() => setEditingShare(null)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {(Object.keys(shareLevelLabels) as ShareLevel[]).map(l => {
+                  const IconComp = shareLevelLabels[l].icon;
+                  return (
+                  <button key={l} onClick={() => setEditingShare(prev => prev ? { ...prev, level: l } : null)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors active:scale-[0.98] ${
+                      editingShare.level === l ? "bg-primary/10 border border-primary/30" : "bg-secondary"
+                    }`}>
+                    <IconComp className={`w-4 h-4 ${editingShare.level === l ? "text-primary" : "text-muted-foreground"}`} />
+                    <div>
+                      <p className={`text-sm font-medium ${editingShare.level === l ? "text-primary" : "text-foreground"}`}>{shareLevelLabels[l].label}</p>
+                      <p className="text-xs text-muted-foreground">{shareLevelLabels[l].desc}</p>
+                    </div>
+                  </button>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 pb-safe">
+                <button onClick={() => setEditingShare(null)} className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98] transition-transform">
+                  Cancel
+                </button>
+                <button onClick={handleUpdateLevel} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform">
+                  Save
                 </button>
               </div>
             </motion.div>
