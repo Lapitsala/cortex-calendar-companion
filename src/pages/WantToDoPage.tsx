@@ -342,7 +342,7 @@ const WantToDoPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-end justify-center bg-foreground/30 backdrop-blur-sm"
+            className="fixed inset-x-0 top-0 bottom-16 z-[60] flex items-end justify-center bg-foreground/30 backdrop-blur-sm"
             onClick={closeAddSheet}
           >
             <motion.div
@@ -351,7 +351,7 @@ const WantToDoPage = () => {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 26 }}
               onClick={(e) => e.stopPropagation()}
-              className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border-t border-border bg-card"
+              className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border-t border-border bg-card"
             >
               <div className="flex items-center justify-between border-b border-border px-5 py-4">
                 <div>

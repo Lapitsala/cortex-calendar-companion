@@ -31,7 +31,7 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-end"
+          className="fixed inset-x-0 top-0 bottom-16 bg-foreground/20 backdrop-blur-sm z-[60] flex items-end"
           onClick={onClose}
         >
           <motion.div
@@ -40,7 +40,7 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25 }}
             onClick={e => e.stopPropagation()}
-            className="w-full max-w-lg mx-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4"
+            className="w-full max-w-lg max-h-full mx-auto overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
