@@ -12,6 +12,7 @@ import ClassroomPage from "./pages/ClassroomPage";
 import SettingsPage from "./pages/SettingsPage";
 import GroupsPage from "./pages/GroupsPage";
 import SharingPage from "./pages/SharingPage";
+import WantToDoPage from "./pages/WantToDoPage";
 import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
@@ -43,6 +44,7 @@ const ProtectedRoutes = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/sharing" element={<SharingPage />} />
+        <Route path="/want-to-do" element={<WantToDoPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />
