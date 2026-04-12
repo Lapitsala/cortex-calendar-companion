@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Calendar as CalIcon, MessageSquare, CheckCircle2, Circle, Clock, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Calendar as CalIcon, MessageSquare, CheckCircle2, Circle, Clock, AlertTriangle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useWantToDo, WantToDoItem } from "@/hooks/useWantToDo";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useChatSessions } from "@/hooks/useChatSessions";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,7 @@ const priorityColors = {
 const WantToDoPage = () => {
   const { items, loading, create, update, remove } = useWantToDo();
   const { createEvent } = useCalendarEvents();
+  const { createSession, addMessage } = useChatSessions();
   const navigate = useNavigate();
 
   const [showAdd, setShowAdd] = useState(false);
@@ -42,10 +44,31 @@ const WantToDoPage = () => {
 
   const handleAdd = async () => {
     if (!title.trim()) { toast.error("Please enter a title"); return; }
-    await create({ title: title.trim(), description: description.trim() || null, deadline: deadline || null, deadline_time: deadlineTime, priority });
+    const item = await create({ title: title.trim(), description: description.trim() || null, deadline: deadline || null, deadline_time: deadlineTime, priority });
+    
+    // Auto-sync to calendar if deadline is set
+    if (deadline && item) {
+      try {
+        const event = await createEvent({
+          title: `✅ ${item.title}`,
+          description: item.description || "From Want-to-do list",
+          event_date: deadline,
+          start_time: deadlineTime || "09:00",
+          end_time: null,
+          location: null,
+          priority: item.priority,
+        });
+        await update(item.id, { synced_event_id: event.id });
+        toast.success("Added & synced to Calendar! 📅✨");
+      } catch {
+        toast.success("Added to your Want-to-do list! ✨");
+      }
+    } else {
+      toast.success("Added to your Want-to-do list! ✨");
+    }
+
     setTitle(""); setDescription(""); setDeadline(""); setDeadlineTime("09:00"); setPriority("medium");
     setShowAdd(false);
-    toast.success("Added to your Want-to-do list! ✨");
   };
 
   const toggleComplete = async (item: WantToDoItem) => {
@@ -70,9 +93,31 @@ const WantToDoPage = () => {
     } catch { toast.error("Failed to sync"); }
   };
 
-  const askCortex = (item: WantToDoItem) => {
-    const msg = `Help me plan how to complete this task: "${item.title}"${item.deadline ? ` (deadline: ${item.deadline})` : ""}${item.description ? `. Details: ${item.description}` : ""}`;
-    navigate("/chat", { state: { prefill: msg } });
+  const askCortex = async (item: WantToDoItem) => {
+    try {
+      // Create a new dedicated chat session for this task
+      const session = await createSession();
+      
+      // Build the initial message
+      const msg = `Help me plan how to complete this task: "${item.title}"${item.deadline ? ` (deadline: ${item.deadline})` : ""}${item.description ? `. Details: ${item.description}` : ""}`;
+      
+      // Add the user message to the new session
+      await addMessage(session.id, "user", msg);
+      
+      // Link the chat session to this want-to-do item
+      await update(item.id, { chat_session_id: session.id });
+      
+      // Navigate to chat with the specific session
+      navigate(`/chat?session=${session.id}`);
+    } catch {
+      toast.error("Failed to start chat");
+    }
+  };
+
+  const openLinkedChat = (item: WantToDoItem) => {
+    if (item.chat_session_id) {
+      navigate(`/chat?session=${item.chat_session_id}`);
+    }
   };
 
   const isOverdue = (item: WantToDoItem) => {
@@ -214,7 +259,7 @@ const WantToDoPage = () => {
                     </div>
                   </div>
                   {/* Actions */}
-                  <div className="flex items-center gap-1 mt-2 ml-8">
+                  <div className="flex items-center gap-1 mt-2 ml-8 flex-wrap">
                     {item.deadline && !item.synced_event_id && (
                       <button onClick={() => syncToCalendar(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors">
                         <CalIcon className="w-3 h-3" />Sync to Cal
@@ -223,6 +268,11 @@ const WantToDoPage = () => {
                     <button onClick={() => askCortex(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent text-accent-foreground text-[10px] font-medium hover:bg-accent/80 transition-colors">
                       <MessageSquare className="w-3 h-3" />Ask Cortex
                     </button>
+                    {item.chat_session_id && (
+                      <button onClick={() => openLinkedChat(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary text-foreground text-[10px] font-medium hover:bg-secondary/80 transition-colors">
+                        <ExternalLink className="w-3 h-3" />View Chat
+                      </button>
+                    )}
                     <button onClick={() => setDeleteId(item.id)} className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
