@@ -278,6 +278,48 @@ export type Database = {
         }
         Relationships: []
       }
+      want_to_do: {
+        Row: {
+          created_at: string
+          deadline: string | null
+          deadline_time: string | null
+          description: string | null
+          id: string
+          is_completed: boolean
+          priority: string
+          synced_event_id: string | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string | null
+          deadline_time?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          synced_event_id?: string | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deadline?: string | null
+          deadline_time?: string | null
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          synced_event_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

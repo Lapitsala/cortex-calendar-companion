@@ -1,4 +1,4 @@
-import { MessageSquare, Calendar, Users, Share2, Settings, BookOpen } from "lucide-react";
+import { MessageSquare, Calendar, Users, Share2, Settings, BookOpen, ListChecks } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -7,7 +7,8 @@ const tabs = [
   { path: "/chat", icon: MessageSquare, label: "Chat" },
   { path: "/groups", icon: Users, label: "Groups" },
   { path: "/sharing", icon: Share2, label: "Sharing" },
-  { path: "/classroom", icon: BookOpen, label: "Classroom" },
+  { path: "/want-to-do", icon: ListChecks, label: "Want to do" },
+  { path: "/classroom", icon: BookOpen, label: "Class" },
   { path: "/settings", icon: Settings, label: "Settings" },
 ];
 

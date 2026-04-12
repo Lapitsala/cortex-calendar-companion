@@ -1,0 +1,254 @@
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Trash2, Calendar as CalIcon, MessageSquare, CheckCircle2, Circle, Clock, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { useWantToDo, WantToDoItem } from "@/hooks/useWantToDo";
+import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+
+type Filter = "all" | "active" | "completed";
+
+const priorityColors = {
+  high: "bg-destructive/10 text-destructive border-destructive/20",
+  medium: "bg-warning/10 text-warning border-warning/20",
+  low: "bg-success/10 text-success border-success/20",
+};
+
+const WantToDoPage = () => {
+  const { items, loading, create, update, remove } = useWantToDo();
+  const { createEvent } = useCalendarEvents();
+  const navigate = useNavigate();
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [deadlineTime, setDeadlineTime] = useState("09:00");
+  const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
+
+  const filtered = items.filter(i => {
+    if (filter === "active") return !i.is_completed;
+    if (filter === "completed") return i.is_completed;
+    return true;
+  });
+
+  const handleAdd = async () => {
+    if (!title.trim()) { toast.error("Please enter a title"); return; }
+    await create({ title: title.trim(), description: description.trim() || null, deadline: deadline || null, deadline_time: deadlineTime, priority });
+    setTitle(""); setDescription(""); setDeadline(""); setDeadlineTime("09:00"); setPriority("medium");
+    setShowAdd(false);
+    toast.success("Added to your Want-to-do list! ✨");
+  };
+
+  const toggleComplete = async (item: WantToDoItem) => {
+    await update(item.id, { is_completed: !item.is_completed });
+  };
+
+  const syncToCalendar = async (item: WantToDoItem) => {
+    if (!item.deadline) { toast.error("Set a deadline first"); return; }
+    if (item.synced_event_id) { toast.info("Already synced to calendar"); return; }
+    try {
+      const event = await createEvent({
+        title: `✅ ${item.title}`,
+        description: item.description || "From Want-to-do list",
+        event_date: item.deadline,
+        start_time: item.deadline_time || "09:00",
+        end_time: null,
+        location: null,
+        priority: item.priority,
+      });
+      await update(item.id, { synced_event_id: event.id });
+      toast.success("Synced to Calendar! 📅");
+    } catch { toast.error("Failed to sync"); }
+  };
+
+  const askCortex = (item: WantToDoItem) => {
+    const msg = `Help me plan how to complete this task: "${item.title}"${item.deadline ? ` (deadline: ${item.deadline})` : ""}${item.description ? `. Details: ${item.description}` : ""}`;
+    navigate("/chat", { state: { prefill: msg } });
+  };
+
+  const isOverdue = (item: WantToDoItem) => {
+    if (!item.deadline || item.is_completed) return false;
+    return new Date(item.deadline) < new Date(new Date().toISOString().split("T")[0]);
+  };
+
+  const activeCount = items.filter(i => !i.is_completed).length;
+  const completedCount = items.filter(i => i.is_completed).length;
+
+  return (
+    <div className="flex flex-col h-[100dvh] pb-20 bg-background">
+      {/* Header */}
+      <div className="bg-card border-b border-border px-4 py-4 z-10">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="font-display text-lg font-bold text-foreground">Want to do</h1>
+            <p className="text-xs text-muted-foreground">{activeCount} active · {completedCount} done</p>
+          </div>
+        </div>
+        {/* Filter */}
+        <div className="flex gap-1 bg-secondary rounded-xl p-1">
+          {(["all", "active", "completed"] as Filter[]).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-all active:scale-95 ${
+                filter === f ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        {/* Add form */}
+        <AnimatePresence>
+          {showAdd && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-card border border-border rounded-xl p-4 mb-4 space-y-3 overflow-hidden"
+            >
+              <div>
+                <Label className="text-xs">Title *</Label>
+                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="What do you want to do?" className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Description</Label>
+                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Details..." className="mt-1 min-h-[60px]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Deadline</Label>
+                  <Input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Time</Label>
+                  <Input type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Priority</Label>
+                <div className="flex gap-2 mt-1">
+                  {(["low", "medium", "high"] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setPriority(p)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium capitalize border transition-all ${
+                        priority === p ? priorityColors[p] : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowAdd(false)} className="flex-1 py-2 rounded-lg bg-secondary text-muted-foreground text-sm font-medium">Cancel</button>
+                <button onClick={handleAdd} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Add</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground text-sm">
+            {filter === "all" ? "No items yet. Tap + to add one!" : `No ${filter} items`}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <AnimatePresence mode="popLayout">
+              {filtered.map(item => (
+                <motion.div
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -100 }}
+                  className={`bg-card border rounded-xl p-3.5 shadow-soft transition-all ${
+                    item.is_completed ? "border-border/50 opacity-60" : isOverdue(item) ? "border-destructive/30" : "border-border"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <button onClick={() => toggleComplete(item)} className="mt-0.5 shrink-0">
+                      {item.is_completed
+                        ? <CheckCircle2 className="w-5 h-5 text-success" />
+                        : <Circle className="w-5 h-5 text-muted-foreground" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-sm font-semibold ${item.is_completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                          {item.title}
+                        </span>
+                        {isOverdue(item) && <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                      </div>
+                      {item.description && (
+                        <p className="text-xs text-muted-foreground mb-1.5 line-clamp-2">{item.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {item.deadline && (
+                          <span className={`flex items-center gap-1 ${isOverdue(item) ? "text-destructive" : ""}`}>
+                            <Clock className="w-3 h-3" />{item.deadline}
+                          </span>
+                        )}
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${priorityColors[item.priority]}`}>
+                          {item.priority}
+                        </span>
+                        {item.synced_event_id && <span className="text-[10px]">📅 synced</span>}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 mt-2 ml-8">
+                    {item.deadline && !item.synced_event_id && (
+                      <button onClick={() => syncToCalendar(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors">
+                        <CalIcon className="w-3 h-3" />Sync to Cal
+                      </button>
+                    )}
+                    <button onClick={() => askCortex(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent text-accent-foreground text-[10px] font-medium hover:bg-accent/80 transition-colors">
+                      <MessageSquare className="w-3 h-3" />Ask Cortex
+                    </button>
+                    <button onClick={() => setDeleteId(item.id)} className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* FAB */}
+      <button
+        onClick={() => setShowAdd(true)}
+        className="fixed bottom-20 right-4 w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-soft glow-primary z-20 active:scale-95 transition-transform"
+      >
+        <Plus className="w-5 h-5" />
+      </button>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onConfirm={async () => { if (deleteId) { await remove(deleteId); setDeleteId(null); toast.success("Deleted"); } }}
+        onCancel={() => setDeleteId(null)}
+      />
+    </div>
+  );
+};
+
+export default WantToDoPage;
