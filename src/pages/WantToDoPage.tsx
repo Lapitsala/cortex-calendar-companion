@@ -333,15 +333,14 @@ const WantToDoPage = () => {
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${priorityColors[item.priority]}`}>
                               {item.priority}
                             </span>
-                            {item.synced_event_id && <span className="text-[10px]">📅 synced</span>}
                           </div>
                         </div>
+                        <button onClick={() => startEdit(item)} className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                          <Pencil className="w-4 h-4" />
+                        </button>
                       </div>
                       {/* Actions */}
                       <div className="flex items-center gap-1 mt-2 ml-8 flex-wrap">
-                        <button onClick={() => startEdit(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary text-foreground text-[10px] font-medium hover:bg-secondary/80 transition-colors">
-                          <Pencil className="w-3 h-3" />Edit
-                        </button>
                         {item.deadline && !item.synced_event_id && (
                           <button onClick={() => syncToCalendar(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors">
                             <CalIcon className="w-3 h-3" />Sync to Cal
