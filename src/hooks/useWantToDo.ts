@@ -13,6 +13,7 @@ export interface WantToDoItem {
   deadline_time: string | null;
   priority: "high" | "medium" | "low";
   synced_event_id: string | null;
+  chat_session_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +59,7 @@ export const useWantToDo = () => {
         user_id: null,
         is_completed: false,
         synced_event_id: null,
+        chat_session_id: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

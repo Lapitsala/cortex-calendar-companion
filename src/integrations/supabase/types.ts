@@ -280,6 +280,7 @@ export type Database = {
       }
       want_to_do: {
         Row: {
+          chat_session_id: string | null
           created_at: string
           deadline: string | null
           deadline_time: string | null
@@ -293,6 +294,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          chat_session_id?: string | null
           created_at?: string
           deadline?: string | null
           deadline_time?: string | null
@@ -306,6 +308,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          chat_session_id?: string | null
           created_at?: string
           deadline?: string | null
           deadline_time?: string | null
@@ -318,7 +321,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "want_to_do_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

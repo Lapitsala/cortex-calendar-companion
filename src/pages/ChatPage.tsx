@@ -54,15 +54,22 @@ const ChatPage = () => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Handle prefill from Want-to-do page
+  // Handle prefill from Want-to-do page (legacy)
   useEffect(() => {
     const prefill = (location.state as any)?.prefill;
     if (prefill && initialized) {
-      // Clear state so it doesn't re-trigger
       window.history.replaceState({}, document.title);
       handleSend(prefill);
     }
   }, [initialized, location.state]);
+
+  // Handle ?session= param to load a specific session
+  useEffect(() => {
+    const sessionParam = searchParams.get("session");
+    if (sessionParam && initialized && sessionParam !== activeSessionId) {
+      loadSession(sessionParam);
+    }
+  }, [initialized, searchParams]);
 
   // Handle "Chat about this event" from calendar
   useEffect(() => {
