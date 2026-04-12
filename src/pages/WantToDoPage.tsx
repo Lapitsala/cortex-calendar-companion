@@ -28,6 +28,12 @@ const WantToDoPage = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [editDeadlineTime, setEditDeadlineTime] = useState("09:00");
+  const [editPriority, setEditPriority] = useState<"high" | "medium" | "low">("medium");
 
   // Form state
   const [title, setTitle] = useState("");
