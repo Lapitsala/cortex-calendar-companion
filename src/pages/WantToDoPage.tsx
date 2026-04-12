@@ -257,54 +257,87 @@ const WantToDoPage = () => {
                     item.is_completed ? "border-border/50 opacity-60" : isOverdue(item) ? "border-destructive/30" : "border-border"
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <button onClick={() => toggleComplete(item)} className="mt-0.5 shrink-0">
-                      {item.is_completed
-                        ? <CheckCircle2 className="w-5 h-5 text-success" />
-                        : <Circle className="w-5 h-5 text-muted-foreground" />}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-sm font-semibold ${item.is_completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                          {item.title}
-                        </span>
-                        {isOverdue(item) && <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                  {editingId === item.id ? (
+                    /* Edit mode */
+                    <div className="space-y-2">
+                      <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Title" className="text-sm" />
+                      <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description" className="min-h-[50px] text-xs" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input type="date" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} className="text-xs" />
+                        <Input type="time" value={editDeadlineTime} onChange={e => setEditDeadlineTime(e.target.value)} className="text-xs" />
                       </div>
-                      {item.description && (
-                        <p className="text-xs text-muted-foreground mb-1.5 line-clamp-2">{item.description}</p>
-                      )}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        {item.deadline && (
-                          <span className={`flex items-center gap-1 ${isOverdue(item) ? "text-destructive" : ""}`}>
-                            <Clock className="w-3 h-3" />{item.deadline}
-                          </span>
-                        )}
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${priorityColors[item.priority]}`}>
-                          {item.priority}
-                        </span>
-                        {item.synced_event_id && <span className="text-[10px]">📅 synced</span>}
+                      <div className="flex gap-1.5">
+                        {(["low", "medium", "high"] as const).map(p => (
+                          <button key={p} onClick={() => setEditPriority(p)}
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-medium capitalize border transition-all ${editPriority === p ? priorityColors[p] : "border-border text-muted-foreground"}`}
+                          >{p}</button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingId(null)} className="flex-1 py-1.5 rounded-lg bg-secondary text-muted-foreground text-xs font-medium flex items-center justify-center gap-1">
+                          <X className="w-3 h-3" />Cancel
+                        </button>
+                        <button onClick={saveEdit} className="flex-1 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1">
+                          <Save className="w-3 h-3" />Save
+                        </button>
                       </div>
                     </div>
-                  </div>
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 mt-2 ml-8 flex-wrap">
-                    {item.deadline && !item.synced_event_id && (
-                      <button onClick={() => syncToCalendar(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors">
-                        <CalIcon className="w-3 h-3" />Sync to Cal
-                      </button>
-                    )}
-                    <button onClick={() => askCortex(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent text-accent-foreground text-[10px] font-medium hover:bg-accent/80 transition-colors">
-                      <MessageSquare className="w-3 h-3" />Ask Cortex
-                    </button>
-                    {item.chat_session_id && (
-                      <button onClick={() => openLinkedChat(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary text-foreground text-[10px] font-medium hover:bg-secondary/80 transition-colors">
-                        <ExternalLink className="w-3 h-3" />View Chat
-                      </button>
-                    )}
-                    <button onClick={() => setDeleteId(item.id)} className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  ) : (
+                    /* View mode */
+                    <>
+                      <div className="flex items-start gap-3">
+                        <button onClick={() => toggleComplete(item)} className="mt-0.5 shrink-0">
+                          {item.is_completed
+                            ? <CheckCircle2 className="w-5 h-5 text-success" />
+                            : <Circle className="w-5 h-5 text-muted-foreground" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-sm font-semibold ${item.is_completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                              {item.title}
+                            </span>
+                            {isOverdue(item) && <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground mb-1.5 line-clamp-2">{item.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            {item.deadline && (
+                              <span className={`flex items-center gap-1 ${isOverdue(item) ? "text-destructive" : ""}`}>
+                                <Clock className="w-3 h-3" />{item.deadline}
+                              </span>
+                            )}
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${priorityColors[item.priority]}`}>
+                              {item.priority}
+                            </span>
+                            {item.synced_event_id && <span className="text-[10px]">📅 synced</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Actions */}
+                      <div className="flex items-center gap-1 mt-2 ml-8 flex-wrap">
+                        <button onClick={() => startEdit(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary text-foreground text-[10px] font-medium hover:bg-secondary/80 transition-colors">
+                          <Pencil className="w-3 h-3" />Edit
+                        </button>
+                        {item.deadline && !item.synced_event_id && (
+                          <button onClick={() => syncToCalendar(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors">
+                            <CalIcon className="w-3 h-3" />Sync to Cal
+                          </button>
+                        )}
+                        <button onClick={() => askCortex(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent text-accent-foreground text-[10px] font-medium hover:bg-accent/80 transition-colors">
+                          <MessageSquare className="w-3 h-3" />Ask Cortex
+                        </button>
+                        {item.chat_session_id && (
+                          <button onClick={() => openLinkedChat(item)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary text-foreground text-[10px] font-medium hover:bg-secondary/80 transition-colors">
+                            <ExternalLink className="w-3 h-3" />View Chat
+                          </button>
+                        )}
+                        <button onClick={() => setDeleteId(item.id)} className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
