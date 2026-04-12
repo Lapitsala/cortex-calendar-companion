@@ -13,6 +13,7 @@ export interface WantToDoItem {
   deadline_time: string | null;
   priority: "high" | "medium" | "low";
   synced_event_id: string | null;
+  chat_session_id: string | null;
   created_at: string;
   updated_at: string;
 }
