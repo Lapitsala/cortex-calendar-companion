@@ -137,15 +137,38 @@ const WantToDoPage = () => {
 
   const saveEdit = async () => {
     if (!editingId || !editTitle.trim()) { toast.error("Title is required"); return; }
-    await update(editingId, {
+    const currentItem = items.find(i => i.id === editingId);
+    const updates: Partial<WantToDoItem> = {
       title: editTitle.trim(),
       description: editDescription.trim() || null,
       deadline: editDeadline || null,
       deadline_time: editDeadlineTime,
       priority: editPriority,
-    });
+    };
+
+    // Auto-sync to calendar if deadline is set and not yet synced
+    if (editDeadline && (!currentItem?.synced_event_id)) {
+      try {
+        const event = await createEvent({
+          title: `✅ ${editTitle.trim()}`,
+          description: editDescription.trim() || "From Want-to-do list",
+          event_date: editDeadline,
+          start_time: editDeadlineTime || "09:00",
+          end_time: null,
+          location: null,
+          priority: editPriority,
+        });
+        updates.synced_event_id = event.id;
+        toast.success("Updated & synced to Calendar! 📅✨");
+      } catch {
+        toast.success("Updated!");
+      }
+    } else {
+      toast.success("Updated!");
+    }
+
+    await update(editingId, updates);
     setEditingId(null);
-    toast.success("Updated!");
   };
 
   const isOverdue = (item: WantToDoItem) => {
