@@ -11,7 +11,7 @@ import { useGroups } from "@/hooks/useGroups";
 import { useCalendarShares } from "@/hooks/useCalendarShares";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 
 interface LocalMessage {
   id: string;
