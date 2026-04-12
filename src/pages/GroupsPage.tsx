@@ -161,9 +161,9 @@ const GroupsPage = () => {
       <AnimatePresence>
         {showCreate && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setShowCreate(false)}>
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setShowCreate(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-full overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">New Group</h3>
                 <button onClick={() => setShowCreate(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
@@ -191,9 +191,9 @@ const GroupsPage = () => {
       <AnimatePresence>
         {selectedGroup && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setSelectedGroup(null)}>
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setSelectedGroup(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-full overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">{selectedGroup.name}</h3>
                 <button onClick={() => setSelectedGroup(null)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">

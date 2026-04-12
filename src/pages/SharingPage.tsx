@@ -142,9 +142,9 @@ const SharingPage = () => {
       <AnimatePresence>
         {showShare && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setShowShare(false)}>
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setShowShare(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-[calc(100vh-4rem)] overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-full overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">Share Calendar</h3>
                 <button onClick={() => setShowShare(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
@@ -188,9 +188,9 @@ const SharingPage = () => {
       <AnimatePresence>
         {editingShare && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setEditingShare(null)}>
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setEditingShare(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-full overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">Edit Sharing Level</h3>
                 <button onClick={() => setEditingShare(null)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">

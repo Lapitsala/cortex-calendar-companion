@@ -115,7 +115,7 @@ const SettingsPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center"
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center"
             onClick={() => setActiveSheet(null)}
           >
             <motion.div
@@ -124,7 +124,7 @@ const SettingsPage = () => {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-lg max-h-[calc(100vh-7rem)] overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5"
+              className="w-full max-w-lg max-h-full overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5"
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-base font-bold text-foreground">{activeSheet.label}</h3>
