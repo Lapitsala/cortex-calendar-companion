@@ -48,6 +48,19 @@ const WantToDoPage = () => {
     return true;
   });
 
+  const resetAddForm = () => {
+    setTitle("");
+    setDescription("");
+    setDeadline("");
+    setDeadlineTime("09:00");
+    setPriority("medium");
+  };
+
+  const closeAddSheet = () => {
+    resetAddForm();
+    setShowAdd(false);
+  };
+
   const handleAdd = async () => {
     if (!title.trim()) { toast.error("Please enter a title"); return; }
     const item = await create({ title: title.trim(), description: description.trim() || null, deadline: deadline || null, deadline_time: deadlineTime, priority });
@@ -73,8 +86,7 @@ const WantToDoPage = () => {
       toast.success("Added to your Want-to-do list! ✨");
     }
 
-    setTitle(""); setDescription(""); setDeadline(""); setDeadlineTime("09:00"); setPriority("medium");
-    setShowAdd(false);
+    closeAddSheet();
   };
 
   const toggleComplete = async (item: WantToDoItem) => {
@@ -207,57 +219,6 @@ const WantToDoPage = () => {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {/* Add form */}
-        <AnimatePresence>
-          {showAdd && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-card border border-border rounded-xl p-4 mb-4 space-y-3 overflow-hidden"
-            >
-              <div>
-                <Label className="text-xs">Title *</Label>
-                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="What do you want to do?" className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">Description</Label>
-                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Details..." className="mt-1 min-h-[60px]" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Deadline</Label>
-                  <Input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs">Time</Label>
-                  <Input type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} className="mt-1" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Priority</Label>
-                <div className="flex gap-2 mt-1">
-                  {(["low", "medium", "high"] as const).map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium capitalize border transition-all ${
-                        priority === p ? priorityColors[p] : "border-border text-muted-foreground"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setShowAdd(false)} className="flex-1 py-2 rounded-lg bg-secondary text-muted-foreground text-sm font-medium">Cancel</button>
-                <button onClick={handleAdd} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Add</button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -374,6 +335,88 @@ const WantToDoPage = () => {
       >
         <Plus className="w-5 h-5" />
       </button>
+
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/30 backdrop-blur-sm"
+            onClick={closeAddSheet}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 26 }}
+              onClick={(e) => e.stopPropagation()}
+              className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border-t border-border bg-card"
+            >
+              <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <div>
+                  <h2 className="font-display text-base font-bold text-foreground">Add Want to do</h2>
+                  <p className="text-xs text-muted-foreground">Create a task and optionally add a calendar reminder.</p>
+                </div>
+                <button
+                  onClick={closeAddSheet}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+                <div>
+                  <Label className="text-xs">Title *</Label>
+                  <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="What do you want to do?" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Description</Label>
+                  <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Details..." className="mt-1 min-h-[96px]" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Deadline</Label>
+                    <Input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Time</Label>
+                    <Input type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} className="mt-1" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Priority</Label>
+                  <div className="mt-1 flex gap-2">
+                    {(["low", "medium", "high"] as const).map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setPriority(p)}
+                        className={`flex-1 rounded-lg border py-2 text-xs font-medium capitalize transition-all ${
+                          priority === p ? priorityColors[p] : "border-border text-muted-foreground"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="sticky bottom-0 border-t border-border bg-card px-5 py-4">
+                <div className="flex gap-2">
+                  <button onClick={closeAddSheet} className="flex-1 rounded-xl bg-secondary py-3 text-sm font-medium text-foreground active:scale-[0.98] transition-transform">
+                    Cancel
+                  </button>
+                  <button onClick={handleAdd} className="flex-1 rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground active:scale-[0.98] transition-transform disabled:opacity-50" disabled={!title.trim()}>
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <DeleteConfirmDialog
         open={!!deleteId}
