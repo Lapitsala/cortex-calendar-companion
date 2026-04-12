@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Calendar as CalIcon, MessageSquare, CheckCircle2, Circle, Clock, AlertTriangle, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Calendar as CalIcon, MessageSquare, CheckCircle2, Circle, Clock, AlertTriangle, ExternalLink, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { useWantToDo, WantToDoItem } from "@/hooks/useWantToDo";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
