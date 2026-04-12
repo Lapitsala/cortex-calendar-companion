@@ -126,6 +126,28 @@ const WantToDoPage = () => {
     }
   };
 
+  const startEdit = (item: WantToDoItem) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditDescription(item.description || "");
+    setEditDeadline(item.deadline || "");
+    setEditDeadlineTime(item.deadline_time || "09:00");
+    setEditPriority(item.priority);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editTitle.trim()) { toast.error("Title is required"); return; }
+    await update(editingId, {
+      title: editTitle.trim(),
+      description: editDescription.trim() || null,
+      deadline: editDeadline || null,
+      deadline_time: editDeadlineTime,
+      priority: editPriority,
+    });
+    setEditingId(null);
+    toast.success("Updated!");
+  };
+
   const isOverdue = (item: WantToDoItem) => {
     if (!item.deadline || item.is_completed) return false;
     return new Date(item.deadline) < new Date(new Date().toISOString().split("T")[0]);
