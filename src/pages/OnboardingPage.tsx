@@ -39,7 +39,7 @@ const OnboardingPage = () => {
   const handleFinish = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("user_preferences").upsert({
+      const { error } = await (supabase.from("user_preferences" as any) as any).upsert({
         user_id: user!.id,
         preferences: { purposes, features },
         onboarding_completed: true,
