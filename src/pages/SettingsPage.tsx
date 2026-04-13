@@ -169,6 +169,8 @@ const SettingsPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CalendarImportModal open={showImport} onClose={() => setShowImport(false)} />
     </div>
   );
 };
