@@ -49,7 +49,7 @@ const SettingsPage = () => {
     return map;
   });
   const [showImport, setShowImport] = useState(false);
-
+  const [activeSheet, setActiveSheet] = useState<{ label: string; options: string[] } | null>(null);
   const handleSelect = (label: string, value: string) => {
     setSettings(prev => ({ ...prev, [label]: value }));
     setActiveSheet(null);
