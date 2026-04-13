@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useOnboardingCheck } from "@/hooks/useOnboardingCheck";
 import BottomNav from "@/components/BottomNav";
 import ChatPage from "./pages/ChatPage";
 import CalendarPage from "./pages/CalendarPage";
@@ -14,6 +15,7 @@ import GroupsPage from "./pages/GroupsPage";
 import SharingPage from "./pages/SharingPage";
 import WantToDoPage from "./pages/WantToDoPage";
 import AuthPage from "./pages/AuthPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
@@ -21,8 +23,9 @@ const queryClient = new QueryClient();
 
 const ProtectedRoutes = () => {
   const { user, loading, isPreviewMode } = useAuth();
+  const { needsOnboarding, checking } = useOnboardingCheck();
 
-  if (loading) {
+  if (loading || checking) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -32,6 +35,10 @@ const ProtectedRoutes = () => {
 
   if (!user && !isPreviewMode) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (needsOnboarding && !isPreviewMode) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return (
@@ -70,9 +77,28 @@ const AuthGate = () => {
   return <AuthPage />;
 };
 
+const OnboardingGate = () => {
+  const { user, loading, isPreviewMode } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user && !isPreviewMode) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <OnboardingPage />;
+};
+
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<AuthGate />} />
+    <Route path="/onboarding" element={<OnboardingGate />} />
     <Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route path="/*" element={<ProtectedRoutes />} />
   </Routes>
