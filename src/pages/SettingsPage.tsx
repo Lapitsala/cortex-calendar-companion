@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut } from "lucide-react";
+import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import CalendarImportModal from "@/components/CalendarImportModal";
 
 interface SettingItem {
   icon: typeof Clock;
@@ -47,8 +48,8 @@ const SettingsPage = () => {
     sections.forEach(s => s.items.forEach(i => { map[i.label] = i.value; }));
     return map;
   });
+  const [showImport, setShowImport] = useState(false);
   const [activeSheet, setActiveSheet] = useState<{ label: string; options: string[] } | null>(null);
-
   const handleSelect = (label: string, value: string) => {
     setSettings(prev => ({ ...prev, [label]: value }));
     setActiveSheet(null);
@@ -98,6 +99,22 @@ const SettingsPage = () => {
             </div>
           </motion.div>
         ))}
+
+        {/* Import Calendar */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: sections.length * 0.08 }}>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Import</h2>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <button
+              onClick={() => setShowImport(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
+            >
+              <Download className="w-4 h-4 text-muted-foreground" />
+              <span className="flex-1 text-sm text-foreground text-left">Import from .ics file</span>
+              <span className="text-xs text-muted-foreground">Google / Apple</span>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        </motion.div>
 
         {/* Sign out */}
         {!isPreviewMode && (<button
@@ -152,6 +169,8 @@ const SettingsPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CalendarImportModal open={showImport} onClose={() => setShowImport(false)} />
     </div>
   );
 };
