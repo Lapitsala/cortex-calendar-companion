@@ -62,10 +62,16 @@ export const useCalendarEvents = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("calendar_events")
         .select("*")
         .order("event_date", { ascending: true });
+
+      if (user?.id) {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data, error } = await query;
       if (error) {
         console.error("Error fetching events:", error);
         setLoading(false);
@@ -77,7 +83,7 @@ export const useCalendarEvents = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchEvents();
