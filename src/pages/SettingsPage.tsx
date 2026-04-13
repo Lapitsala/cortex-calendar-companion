@@ -48,7 +48,7 @@ const SettingsPage = () => {
     sections.forEach(s => s.items.forEach(i => { map[i.label] = i.value; }));
     return map;
   });
-  const [activeSheet, setActiveSheet] = useState<{ label: string; options: string[] } | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const handleSelect = (label: string, value: string) => {
     setSettings(prev => ({ ...prev, [label]: value }));
