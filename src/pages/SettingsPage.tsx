@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut, Download } from "lucide-react";
+import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut, Download, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import CalendarImportModal from "@/components/CalendarImportModal";
