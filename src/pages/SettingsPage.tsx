@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Bell, Calendar, ChevronRight, User, X, Check, LogOut, Download, BarChart3, Moon, Sun, Pencil } from "lucide-react";
+import { Clock, Bell, Calendar, ChevronRight, User, X, Check, LogOut, Download, BarChart3, Moon, Sun, Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import CalendarImportModal from "@/components/CalendarImportModal";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Input } from "@/components/ui/input";
 
 interface SettingItem {
