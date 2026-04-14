@@ -43,6 +43,7 @@ const sections: { title: string; items: SettingItem[] }[] = [
 ];
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
   const { user, signOut, isPreviewMode } = useAuth();
   const [settings, setSettings] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
