@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Bell, Calendar, ChevronRight, User, X, Check, LogOut, Download, BarChart3, Moon, Sun, Pencil } from "lucide-react";
+import { Clock, Bell, Calendar, ChevronRight, User, X, Check, LogOut, Download, BarChart3, Moon, Sun, Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import CalendarImportModal from "@/components/CalendarImportModal";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Input } from "@/components/ui/input";
 
 interface SettingItem {
@@ -46,6 +47,8 @@ const SettingsPage = () => {
   const [displayName, setDisplayName] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -85,6 +88,34 @@ const SettingsPage = () => {
     } else {
       toast.success("Profile updated");
       setEditingProfile(false);
+    }
+  };
+
+  const handleClearAllData = async () => {
+    if (!user) return;
+    setClearing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired, please sign in again"); return; }
+
+      await Promise.all([
+        supabase.from("calendar_events").delete().eq("user_id", user.id),
+        supabase.from("want_to_do").delete().eq("user_id", user.id),
+        supabase.from("chat_messages").delete().in(
+          "session_id",
+          (await supabase.from("chat_sessions").select("id").eq("user_id", user.id)).data?.map(s => s.id) || []
+        ),
+      ]);
+      await supabase.from("chat_sessions").delete().eq("user_id", user.id);
+
+      toast.success("ล้างข้อมูลทั้งหมดเรียบร้อย");
+      setShowClearConfirm(false);
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      toast.error("ล้างข้อมูลไม่สำเร็จ");
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -201,11 +232,21 @@ const SettingsPage = () => {
           </motion.div>
         ))}
 
+        {/* Clear all data */}
+        {!isPreviewMode && (
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+          >
+            <Trash2 className="w-4 h-4" /> ล้างข้อมูลทั้งหมด
+          </button>
+        )}
+
         {/* Sign out */}
         {!isPreviewMode && (
           <button
             onClick={handleSignOut}
-            className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            className="w-full py-3 rounded-xl bg-secondary text-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
@@ -258,6 +299,13 @@ const SettingsPage = () => {
       </AnimatePresence>
 
       <CalendarImportModal open={showImport} onClose={() => setShowImport(false)} />
+      <DeleteConfirmDialog
+        open={showClearConfirm}
+        title="ล้างข้อมูลทั้งหมด"
+        message="คุณต้องการลบ Events, To-do, และประวัติแชททั้งหมดใช่ไหม? การกระทำนี้ไม่สามารถย้อนกลับได้"
+        onConfirm={handleClearAllData}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   );
 };
