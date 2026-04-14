@@ -91,6 +91,34 @@ const SettingsPage = () => {
     }
   };
 
+  const handleClearAllData = async () => {
+    if (!user) return;
+    setClearing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired, please sign in again"); return; }
+
+      await Promise.all([
+        supabase.from("calendar_events").delete().eq("user_id", user.id),
+        supabase.from("want_to_do").delete().eq("user_id", user.id),
+        supabase.from("chat_messages").delete().in(
+          "session_id",
+          (await supabase.from("chat_sessions").select("id").eq("user_id", user.id)).data?.map(s => s.id) || []
+        ),
+      ]);
+      await supabase.from("chat_sessions").delete().eq("user_id", user.id);
+
+      toast.success("ล้างข้อมูลทั้งหมดเรียบร้อย");
+      setShowClearConfirm(false);
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      toast.error("ล้างข้อมูลไม่สำเร็จ");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] pb-20 bg-background">
       <div className="bg-card border-b border-border px-4 py-3 z-10">
