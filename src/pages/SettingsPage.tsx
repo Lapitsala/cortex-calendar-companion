@@ -232,11 +232,21 @@ const SettingsPage = () => {
           </motion.div>
         ))}
 
+        {/* Clear all data */}
+        {!isPreviewMode && (
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+          >
+            <Trash2 className="w-4 h-4" /> ล้างข้อมูลทั้งหมด
+          </button>
+        )}
+
         {/* Sign out */}
         {!isPreviewMode && (
           <button
             onClick={handleSignOut}
-            className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            className="w-full py-3 rounded-xl bg-secondary text-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
