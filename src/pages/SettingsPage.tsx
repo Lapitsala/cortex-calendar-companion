@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut, Download } from "lucide-react";
+import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut, Download, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import CalendarImportModal from "@/components/CalendarImportModal";
@@ -42,6 +43,7 @@ const sections: { title: string; items: SettingItem[] }[] = [
 ];
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
   const { user, signOut, isPreviewMode } = useAuth();
   const [settings, setSettings] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
@@ -111,6 +113,23 @@ const SettingsPage = () => {
               <Download className="w-4 h-4 text-muted-foreground" />
               <span className="flex-1 text-sm text-foreground text-left">Import from .ics file</span>
               <span className="text-xs text-muted-foreground">Google / Apple</span>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        </motion.div>
+
+
+        {/* Insights & Analytics */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (sections.length + 1) * 0.08 }}>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Analytics</h2>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <button
+              onClick={() => navigate("/insights")}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
+            >
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <span className="flex-1 text-sm text-foreground text-left">Insights & Analytics</span>
+              <span className="text-xs text-muted-foreground">View</span>
               <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
