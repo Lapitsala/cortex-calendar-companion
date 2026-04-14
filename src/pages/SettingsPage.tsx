@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Shield, Bell, Calendar, ChevronRight, User, Palette, X, Check, LogOut, Download, BarChart3 } from "lucide-react";
+import { Clock, Bell, Calendar, ChevronRight, User, X, Check, LogOut, Download, BarChart3, Moon, Sun, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import CalendarImportModal from "@/components/CalendarImportModal";
+import { Input } from "@/components/ui/input";
 
 interface SettingItem {
   icon: typeof Clock;
@@ -28,18 +30,6 @@ const sections: { title: string; items: SettingItem[] }[] = [
       { icon: Bell, label: "Daily Summary", value: "8:00 AM", options: ["7:00 AM", "8:00 AM", "9:00 AM", "Off"] },
     ],
   },
-  {
-    title: "Privacy",
-    items: [
-      { icon: Shield, label: "Privacy Settings", value: "Strict", options: ["Strict", "Normal", "Relaxed"] },
-    ],
-  },
-  {
-    title: "Appearance",
-    items: [
-      { icon: Palette, label: "Theme", value: "Light", options: ["Light", "Dark", "System"] },
-    ],
-  },
 ];
 
 const SettingsPage = () => {
@@ -52,6 +42,20 @@ const SettingsPage = () => {
   });
   const [showImport, setShowImport] = useState(false);
   const [activeSheet, setActiveSheet] = useState<{ label: string; options: string[] } | null>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+
+  useEffect(() => {
+    if (user) {
+      supabase.from("profiles").select("display_name").eq("user_id", user.id).single()
+        .then(({ data }) => {
+          if (data?.display_name) setDisplayName(data.display_name);
+        });
+    }
+  }, [user]);
+
   const handleSelect = (label: string, value: string) => {
     setSettings(prev => ({ ...prev, [label]: value }));
     setActiveSheet(null);
@@ -63,6 +67,27 @@ const SettingsPage = () => {
     toast.success("Signed out");
   };
 
+  const toggleDarkMode = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+    toast.success(next ? "Dark mode enabled" : "Light mode enabled");
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    const { error } = await supabase.from("profiles").update({ display_name: displayName }).eq("user_id", user.id);
+    setSavingProfile(false);
+    if (error) {
+      toast.error("Failed to update profile");
+    } else {
+      toast.success("Profile updated");
+      setEditingProfile(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] pb-20 bg-background">
       <div className="bg-card border-b border-border px-4 py-3 z-10">
@@ -72,18 +97,92 @@ const SettingsPage = () => {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
         {/* Account info */}
-        <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="w-5 h-5 text-primary" />
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{displayName || user?.email || "Preview user"}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email || "preview@example.com"}</p>
+              <p className="text-[10px] text-muted-foreground">{isPreviewMode ? "Preview mode" : "Signed in"}</p>
+            </div>
+            {!isPreviewMode && (
+              <button onClick={() => setEditingProfile(!editingProfile)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+                <Pencil className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{user?.email || "Preview user"}</p>
-            <p className="text-xs text-muted-foreground">{isPreviewMode ? "Preview mode (no backend credentials)" : "Signed in"}</p>
-          </div>
+          <AnimatePresence>
+            {editingProfile && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="mt-3 space-y-2">
+                  <label className="text-xs text-muted-foreground">Display Name</label>
+                  <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile}
+                    className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
+                  >
+                    {savingProfile ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
+        {/* Import Calendar */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Import</h2>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <button
+              onClick={() => setShowImport(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
+            >
+              <Download className="w-4 h-4 text-muted-foreground" />
+              <span className="flex-1 text-sm text-foreground text-left">Import from .ics file</span>
+              <span className="text-xs text-muted-foreground">Google / Apple</span>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Insights & Analytics */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Analytics</h2>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <button
+              onClick={() => navigate("/insights")}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
+            >
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <span className="flex-1 text-sm text-foreground text-left">Insights & Analytics</span>
+              <span className="text-xs text-muted-foreground">View</span>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Dark Mode */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Appearance</h2>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <button
+              onClick={toggleDarkMode}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
+            >
+              {isDark ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
+              <span className="flex-1 text-sm text-foreground text-left">Dark Mode</span>
+              <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-colors ${isDark ? "bg-primary" : "bg-input"}`}>
+                <motion.div layout className={`w-5 h-5 rounded-full bg-background shadow-sm`} style={{ marginLeft: isDark ? "auto" : 0 }} />
+              </div>
+            </button>
+          </div>
+        </motion.div>
+
         {sections.map((section, si) => (
-          <motion.div key={section.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: si * 0.08 }}>
+          <motion.div key={section.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 + si * 0.08 }}>
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">{section.title}</h2>
             <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
               {section.items.map((item) => (
@@ -102,46 +201,15 @@ const SettingsPage = () => {
           </motion.div>
         ))}
 
-        {/* Import Calendar */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: sections.length * 0.08 }}>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Import</h2>
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <button
-              onClick={() => setShowImport(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
-            >
-              <Download className="w-4 h-4 text-muted-foreground" />
-              <span className="flex-1 text-sm text-foreground text-left">Import from .ics file</span>
-              <span className="text-xs text-muted-foreground">Google / Apple</span>
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          </div>
-        </motion.div>
-
-
-        {/* Insights & Analytics */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (sections.length + 1) * 0.08 }}>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Analytics</h2>
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <button
-              onClick={() => navigate("/insights")}
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
-            >
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <span className="flex-1 text-sm text-foreground text-left">Insights & Analytics</span>
-              <span className="text-xs text-muted-foreground">View</span>
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          </div>
-        </motion.div>
-
         {/* Sign out */}
-        {!isPreviewMode && (<button
-          onClick={handleSignOut}
-          className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-        >
-          <LogOut className="w-4 h-4" /> Sign Out
-        </button>)}
+        {!isPreviewMode && (
+          <button
+            onClick={handleSignOut}
+            className="w-full py-3 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        )}
       </div>
 
       {/* Options sheet */}
