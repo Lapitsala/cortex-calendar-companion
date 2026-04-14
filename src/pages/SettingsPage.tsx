@@ -299,6 +299,13 @@ const SettingsPage = () => {
       </AnimatePresence>
 
       <CalendarImportModal open={showImport} onClose={() => setShowImport(false)} />
+      <DeleteConfirmDialog
+        open={showClearConfirm}
+        title="ล้างข้อมูลทั้งหมด"
+        message="คุณต้องการลบ Events, To-do, และประวัติแชททั้งหมดใช่ไหม? การกระทำนี้ไม่สามารถย้อนกลับได้"
+        onConfirm={handleClearAllData}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   );
 };
