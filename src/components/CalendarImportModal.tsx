@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, FileText, Check, AlertCircle, Loader2 } from "lucide-react";
 import { parseICS, ParsedEvent } from "@/lib/icsParser";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Props {
@@ -58,6 +59,15 @@ const CalendarImportModal = ({ open, onClose }: Props) => {
 
   const handleImport = async () => {
     setImporting(true);
+    
+    // Force session refresh so the JWT token is attached to requests
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Please sign in again to import events");
+      setImporting(false);
+      return;
+    }
+    
     let success = 0;
     let failed = 0;
     for (const ev of parsed) {
@@ -69,8 +79,12 @@ const CalendarImportModal = ({ open, onClose }: Props) => {
       }
     }
     setImporting(false);
-    toast.success(`Imported ${success} event${success !== 1 ? "s" : ""}${failed > 0 ? `, ${failed} failed` : ""}`);
-    handleClose();
+    if (success > 0) {
+      toast.success(`Imported ${success} event${success !== 1 ? "s" : ""}${failed > 0 ? `, ${failed} failed` : ""}`);
+    } else {
+      toast.error("Import failed — please sign out and sign back in, then try again");
+    }
+    if (success > 0) handleClose();
   };
 
   return (
