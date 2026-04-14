@@ -129,12 +129,17 @@ export const useCalendarEvents = () => {
       return created;
     }
 
+    // Refresh session to ensure valid JWT is used
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id || user?.id;
+
     const { data, error } = await supabase
       .from("calendar_events")
-      .insert({ ...event, user_id: user?.id })
+      .insert({ ...event, user_id: userId })
       .select()
       .single();
     if (error) {
+      console.error("Create event error:", error);
       toast.error("Failed to create event");
       throw error;
     }
