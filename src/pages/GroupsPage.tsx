@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Users, X, UserPlus, Clock, Trash2, Check, XCircle } from "lucide-react";
+import { Plus, Users, X, UserPlus, Clock, Trash2, Check, XCircle, LogOut, Shield, ShieldCheck, Pencil, UserMinus } from "lucide-react";
 import { useGroups, Group, GroupMember } from "@/hooks/useGroups";
 import { useAuth } from "@/hooks/useAuth";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -10,7 +10,11 @@ import { useNavigate } from "react-router-dom";
 
 const GroupsPage = () => {
   const { user } = useAuth();
-  const { groups, createGroup, deleteGroup, getMembers, inviteMember, respondToInvite } = useGroups();
+  const {
+    groups, createGroup, deleteGroup, updateGroup,
+    getMembers, inviteMember, respondToInvite,
+    leaveGroup, kickMember, requestAdmin, refetch,
+  } = useGroups();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -21,18 +25,18 @@ const GroupsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<GroupMember[]>([]);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [kickTarget, setKickTarget] = useState<GroupMember | null>(null);
 
-  // Load pending invites for current user
   useEffect(() => {
     if (!user) return;
-    // Find pending invites across all member lists
     const loadPending = async () => {
       const allPending: GroupMember[] = [];
       for (const g of groups) {
         const m = await getMembers(g.id);
-        const myPending = m.filter(
-          mem => mem.user_id === user.id && mem.status === "pending"
-        );
+        const myPending = m.filter(mem => mem.user_id === user.id && mem.status === "pending");
         allPending.push(...myPending);
       }
       setPendingInvites(allPending);
@@ -42,38 +46,76 @@ const GroupsPage = () => {
 
   const loadMembers = async (group: Group) => {
     setSelectedGroup(group);
+    setEditing(false);
     const m = await getMembers(group.id);
     setMembers(m);
   };
 
   const handleCreate = async () => {
-    if (!newGroupName.trim()) {
-      toast.error("Group name is required");
-      return;
-    }
+    if (!newGroupName.trim()) { toast.error("Group name is required"); return; }
     await createGroup(newGroupName, newGroupDesc);
-    setNewGroupName("");
-    setNewGroupDesc("");
-    setShowCreate(false);
+    setNewGroupName(""); setNewGroupDesc(""); setShowCreate(false);
     toast.success("Group created!");
   };
 
   const handleInvite = async () => {
     if (!selectedGroup) return;
-    if (!inviteEmail.trim()) {
-      toast.error("Please enter an email address");
-      return;
-    }
-    if (!/\S+@\S+\.\S+/.test(inviteEmail.trim())) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
+    if (!inviteEmail.trim()) { toast.error("Please enter an email address"); return; }
+    if (!/\S+@\S+\.\S+/.test(inviteEmail.trim())) { toast.error("Please enter a valid email address"); return; }
     try {
       await inviteMember(selectedGroup.id, inviteEmail);
       setInviteEmail("");
       const m = await getMembers(selectedGroup.id);
       setMembers(m);
     } catch {}
+  };
+
+  const handleLeave = async () => {
+    if (!selectedGroup) return;
+    await leaveGroup(selectedGroup.id);
+    setSelectedGroup(null);
+    await refetch();
+  };
+
+  const handleKick = async () => {
+    if (!kickTarget) return;
+    await kickMember(kickTarget.id);
+    setKickTarget(null);
+    if (selectedGroup) {
+      const m = await getMembers(selectedGroup.id);
+      setMembers(m);
+    }
+  };
+
+  const handleRequestAdmin = async (member: GroupMember) => {
+    await requestAdmin(member.id);
+    if (selectedGroup) {
+      const m = await getMembers(selectedGroup.id);
+      setMembers(m);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedGroup || !editName.trim()) return;
+    await updateGroup(selectedGroup.id, editName, editDesc || null);
+    setEditing(false);
+    setSelectedGroup({ ...selectedGroup, name: editName, description: editDesc || null });
+    await refetch();
+  };
+
+  const startEdit = () => {
+    if (!selectedGroup) return;
+    setEditName(selectedGroup.name);
+    setEditDesc(selectedGroup.description || "");
+    setEditing(true);
+  };
+
+  const myMembership = members.find(m => m.user_id === user?.id);
+  const isAdmin = myMembership?.role === "admin" || selectedGroup?.created_by === user?.id;
+
+  const getMemberName = (m: GroupMember) => {
+    if (m.user_id === user?.id) return "You";
+    return m.display_name || m.email || m.user_id.slice(0, 8);
   };
 
   return (
@@ -193,34 +235,75 @@ const GroupsPage = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setSelectedGroup(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-full overflow-y-auto">
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+              
+              {/* Header */}
               <div className="flex items-center justify-between">
-                <h3 className="font-display text-base font-bold text-foreground">{selectedGroup.name}</h3>
-                <button onClick={() => setSelectedGroup(null)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+                {editing ? (
+                  <div className="flex-1 space-y-2 mr-3">
+                    <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Group name"
+                      className="w-full bg-secondary rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <input value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Description (optional)"
+                      className="w-full bg-secondary rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <div className="flex gap-2">
+                      <button onClick={() => setEditing(false)} className="px-3 py-1.5 rounded-lg bg-secondary text-foreground text-xs font-medium">Cancel</button>
+                      <button onClick={handleSaveEdit} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <h3 className="font-display text-base font-bold text-foreground truncate">{selectedGroup.name}</h3>
+                    {isAdmin && (
+                      <button onClick={startEdit} className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center active:scale-95 shrink-0">
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    )}
+                  </div>
+                )}
+                <button onClick={() => setSelectedGroup(null)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95 shrink-0">
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
 
+              {selectedGroup.description && !editing && (
+                <p className="text-xs text-muted-foreground">{selectedGroup.description}</p>
+              )}
+
               {/* Members */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase">Members ({members.length})</h4>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase">Members ({members.filter(m => m.status === "accepted").length})</h4>
                 {members.map(m => (
                   <div key={m.id} className="flex items-center gap-3 bg-secondary rounded-xl px-3 py-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Users className="w-3.5 h-3.5 text-primary" />
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                      {(getMemberName(m))[0]?.toUpperCase()}
                     </div>
-                    <span className="flex-1 text-sm text-foreground">{m.user_id === user?.id ? "You" : m.user_id.slice(0, 8)}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-foreground block truncate">{getMemberName(m)}</span>
+                      {m.email && m.user_id !== user?.id && (
+                        <span className="text-[10px] text-muted-foreground truncate block">{m.email}</span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                       m.status === "accepted" ? "bg-success/10 text-success" :
                       m.status === "pending" ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
                     }`}>{m.status}</span>
-                    <span className="text-xs text-muted-foreground">{m.role}</span>
+                    {m.role === "admin" ? (
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                    ) : (
+                      <Shield className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                    )}
+                    {/* Kick button for admins (not self) */}
+                    {isAdmin && m.user_id !== user?.id && m.status === "accepted" && (
+                      <button onClick={() => setKickTarget(m)} className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center active:scale-95 shrink-0">
+                        <UserMinus className="w-3 h-3 text-destructive" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
 
               {/* Invite */}
-              {selectedGroup.created_by === user?.id && (
+              {isAdmin && (
                 <div className="flex gap-2">
                   <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Invite by email"
                     className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
@@ -231,12 +314,36 @@ const GroupsPage = () => {
                 </div>
               )}
 
-              {/* Find common time */}
-              <button
-                onClick={() => navigate(`/chat?event=Find a common meeting time for the group "${selectedGroup.name}"`)}
-                className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-                <Clock className="w-4 h-4" /> Find Common Time with AI
-              </button>
+              {/* Action buttons */}
+              <div className="space-y-2">
+                {/* Request admin (only for non-admin members) */}
+                {myMembership && myMembership.role !== "admin" && myMembership.status === "accepted" && (
+                  <button
+                    onClick={() => handleRequestAdmin(myMembership)}
+                    className="w-full py-2.5 rounded-xl bg-primary/10 text-primary font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                  >
+                    <ShieldCheck className="w-4 h-4" /> Request Admin Role
+                  </button>
+                )}
+
+                {/* Find common time */}
+                <button
+                  onClick={() => navigate(`/chat?event=Find a common meeting time for the group "${selectedGroup.name}"`)}
+                  className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <Clock className="w-4 h-4" /> Find Common Time with AI
+                </button>
+
+                {/* Leave group (not for creator) */}
+                {myMembership && selectedGroup.created_by !== user?.id && (
+                  <button
+                    onClick={handleLeave}
+                    className="w-full py-2.5 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                  >
+                    <LogOut className="w-4 h-4" /> Leave Group
+                  </button>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -248,6 +355,14 @@ const GroupsPage = () => {
         message="Are you sure? All members will lose access."
         onConfirm={async () => { if (deleteTarget) { await deleteGroup(deleteTarget); setDeleteTarget(null); toast.success("Group deleted"); } }}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <DeleteConfirmDialog
+        open={!!kickTarget}
+        title="Remove Member"
+        message={`Remove ${kickTarget ? getMemberName(kickTarget) : ""} from this group?`}
+        onConfirm={handleKick}
+        onCancel={() => setKickTarget(null)}
       />
 
       <EventCreateModal
