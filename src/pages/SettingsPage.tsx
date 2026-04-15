@@ -108,6 +108,9 @@ const SettingsPage = () => {
       ]);
       await supabase.from("chat_sessions").delete().eq("user_id", user.id);
 
+      // Clear Classroom synced state
+      localStorage.removeItem("classroom_synced_ids");
+
       toast.success("ล้างข้อมูลทั้งหมดเรียบร้อย");
       setShowClearConfirm(false);
       window.location.reload();
