@@ -89,6 +89,10 @@ const GroupsPage = () => {
     loadPending();
   }, [groups, user]);
 
+  useEffect(() => {
+    fetchUnrespondedCounts();
+  }, [fetchUnrespondedCounts]);
+
   // Load events when group selected
   useEffect(() => {
     if (selectedGroup) {
