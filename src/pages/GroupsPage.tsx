@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Users, X, UserPlus, Clock, Trash2, Check, XCircle, LogOut,
@@ -8,6 +8,7 @@ import {
 import { useGroups, Group, GroupMember } from "@/hooks/useGroups";
 import { useGroupEvents, GroupEvent, GroupEventResponse } from "@/hooks/useGroupEvents";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -50,6 +51,30 @@ const GroupsPage = () => {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [eventResponsesMap, setEventResponsesMap] = useState<Record<string, GroupEventResponse[]>>({});
 
+  // Notification badges: count of unresponded events per group
+  const [unrespondedCounts, setUnrespondedCounts] = useState<Record<string, number>>({});
+
+  const fetchUnrespondedCounts = useCallback(async () => {
+    if (!user || groups.length === 0) return;
+    const counts: Record<string, number> = {};
+    for (const g of groups) {
+      const { data: events } = await supabase
+        .from("group_events")
+        .select("id")
+        .eq("group_id", g.id);
+      if (!events || events.length === 0) { counts[g.id] = 0; continue; }
+      const eventIds = events.map(e => e.id);
+      const { data: myResponses } = await supabase
+        .from("group_event_responses")
+        .select("group_event_id")
+        .eq("user_id", user.id)
+        .in("group_event_id", eventIds);
+      const respondedIds = new Set((myResponses || []).map(r => r.group_event_id));
+      counts[g.id] = eventIds.filter(id => !respondedIds.has(id)).length;
+    }
+    setUnrespondedCounts(counts);
+  }, [user, groups]);
+
   useEffect(() => {
     if (!user) return;
     const loadPending = async () => {
@@ -63,6 +88,10 @@ const GroupsPage = () => {
     };
     loadPending();
   }, [groups, user]);
+
+  useEffect(() => {
+    fetchUnrespondedCounts();
+  }, [fetchUnrespondedCounts]);
 
   // Load events when group selected
   useEffect(() => {
@@ -175,6 +204,7 @@ const GroupsPage = () => {
     await respondToEvent(eventId, response);
     const responses = await fetchEventResponses(eventId);
     setEventResponsesMap(prev => ({ ...prev, [eventId]: responses }));
+    fetchUnrespondedCounts();
   };
 
   const myMembership = members.find(m => m.user_id === user?.id);
@@ -246,8 +276,13 @@ const GroupsPage = () => {
               className="w-full text-left bg-card border border-border rounded-xl p-4 active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center relative">
                   <Users className="w-5 h-5 text-primary" />
+                  {(unrespondedCounts[group.id] || 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-[10px] font-bold text-white flex items-center justify-center">
+                      {unrespondedCounts[group.id]}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-semibold text-foreground">{group.name}</h3>
