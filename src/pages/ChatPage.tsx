@@ -190,34 +190,33 @@ const ChatPage = () => {
   const buildGroupContext = async () => {
     if (groups.length === 0) return "";
     const parts: string[] = [];
+    const today = new Date().toISOString().split("T")[0];
+    const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
     for (const g of groups) {
       const members = await getMembers(g.id);
       const acceptedMembers = members.filter(m => m.status === "accepted");
       const memberLines: string[] = [];
       for (const m of acceptedMembers) {
         const name = m.display_name || m.email || m.user_id.slice(0, 8);
-        // Fetch this member's calendar events for the next 7 days
-        const today = new Date().toISOString().split("T")[0];
-        const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
         const { data: memberEvents } = await supabase
           .from("calendar_events")
-          .select("title, event_date, start_time, end_time")
+          .select("event_date, start_time, end_time")
           .eq("user_id", m.user_id)
           .gte("event_date", today)
           .lte("event_date", nextWeek)
           .order("event_date", { ascending: true });
         if (memberEvents && memberEvents.length > 0) {
-          const eventList = memberEvents.map(e =>
-            `      ${e.event_date} ${e.start_time}${e.end_time ? `-${e.end_time}` : ""}: ${e.title}`
+          const busySlots = memberEvents.map(e =>
+            `      ${e.event_date} ${e.start_time}${e.end_time ? `-${e.end_time}` : ""}`
           ).join("\n");
-          memberLines.push(`    ${name} (${m.role}) — BUSY times:\n${eventList}`);
+          memberLines.push(`    ${name} — BUSY slots:\n${busySlots}`);
         } else {
-          memberLines.push(`    ${name} (${m.role}) — No events scheduled (fully free)`);
+          memberLines.push(`    ${name} — Fully free`);
         }
       }
       parts.push(`  Group "${g.name}" (${acceptedMembers.length} members):\n${memberLines.join("\n")}`);
     }
-    return "\n\nUser's groups with member schedules (next 7 days):\n" + parts.join("\n\n");
+    return "\n\nUser's groups — member busy/free slots (next 7 days, privacy-safe: no event titles or details shown):\n" + parts.join("\n\n");
   };
 
   const buildClassroomContext = () => {
