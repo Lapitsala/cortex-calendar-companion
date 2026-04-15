@@ -145,6 +145,92 @@ export type Database = {
         }
         Relationships: []
       }
+      classroom_assignments: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string
+          due_date: string
+          due_time: string
+          id: string
+          is_synced: boolean
+          points: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string
+          due_date: string
+          due_time?: string
+          id?: string
+          is_synced?: boolean
+          points?: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string
+          due_date?: string
+          due_time?: string
+          id?: string
+          is_synced?: boolean
+          points?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classroom_assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "classroom_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classroom_courses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          section: string
+          teacher: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          section?: string
+          teacher?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          section?: string
+          teacher?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_availability: {
         Row: {
           available_date: string
