@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Plus, Clock, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useCalendarEvents, CalendarEvent } from "@/hooks/useCalendarEvents";
+import { useWantToDo } from "@/hooks/useWantToDo";
 import MonthView from "@/components/calendar/MonthView";
 import WeekView from "@/components/calendar/WeekView";
 import DayView from "@/components/calendar/DayView";
