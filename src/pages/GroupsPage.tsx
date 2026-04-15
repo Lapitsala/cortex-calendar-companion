@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Users, X, UserPlus, Clock, Trash2, Check, XCircle, LogOut,
@@ -8,6 +8,7 @@ import {
 import { useGroups, Group, GroupMember } from "@/hooks/useGroups";
 import { useGroupEvents, GroupEvent, GroupEventResponse } from "@/hooks/useGroupEvents";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
