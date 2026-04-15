@@ -24,6 +24,7 @@ const CalendarPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const { events, deleteEvent } = useCalendarEvents();
+  const { items: reminders, update: updateReminder } = useWantToDo();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
