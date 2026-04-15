@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ArrowDownToLine } from "lucide-react";
 import { toast } from "sonner";
-import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useWantToDo } from "@/hooks/useWantToDo";
 
 interface Course {
   id: string;
@@ -54,9 +54,20 @@ const ClassroomPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [syncedIds, setSyncedIds] = useState<Set<string>>(new Set());
   const [isConnected] = useState(true);
-  const { createEvent } = useCalendarEvents();
+  const { items: wantToDoItems, create: createWantToDo } = useWantToDo();
+
+  // Derive synced IDs from existing want_to_do items (matched by title pattern)
+  const syncedIds = useMemo(() => {
+    const ids = new Set<string>();
+    MOCK_ASSIGNMENTS.forEach((a) => {
+      const expectedTitle = `📚 ${a.title}`;
+      if (wantToDoItems.some((item) => item.title === expectedTitle)) {
+        ids.add(a.id);
+      }
+    });
+    return ids;
+  }, [wantToDoItems]);
 
   const filteredAssignments = MOCK_ASSIGNMENTS.filter((a) => {
     if (selectedCourse && a.courseId !== selectedCourse) return false;
@@ -67,15 +78,13 @@ const ClassroomPage = () => {
 
   const getCourse = (courseId: string) => MOCK_COURSES.find((c) => c.id === courseId)!;
 
-  const syncAssignmentToCalendar = async (assignment: Assignment) => {
+  const syncAssignmentAsReminder = async (assignment: Assignment) => {
     const course = getCourse(assignment.courseId);
-    await createEvent({
+    await createWantToDo({
       title: `📚 ${assignment.title}`,
       description: `[${course.name}] ${assignment.description}\nPoints: ${assignment.points}`,
-      event_date: assignment.dueDate,
-      start_time: assignment.dueTime,
-      end_time: null,
-      location: null,
+      deadline: assignment.dueDate,
+      deadline_time: assignment.dueTime,
       priority: assignment.status === "overdue" ? "high" : assignment.status === "due_soon" ? "medium" : "low",
     });
   };
@@ -85,11 +94,8 @@ const ClassroomPage = () => {
     const toSync = filteredAssignments.filter((a) => a.status !== "submitted" && !syncedIds.has(a.id));
     try {
       for (const a of toSync) {
-        await syncAssignmentToCalendar(a);
+        await syncAssignmentAsReminder(a);
       }
-      const newSynced = new Set(syncedIds);
-      toSync.forEach((a) => newSynced.add(a.id));
-      setSyncedIds(newSynced);
       toast.success(`Synced ${toSync.length} assignments to calendar`);
     } catch {
       toast.error("Failed to sync some assignments");
@@ -100,10 +106,7 @@ const ClassroomPage = () => {
 
   const handleSyncOne = async (assignment: Assignment) => {
     try {
-      await syncAssignmentToCalendar(assignment);
-      const newSynced = new Set(syncedIds);
-      newSynced.add(assignment.id);
-      setSyncedIds(newSynced);
+      await syncAssignmentAsReminder(assignment);
       toast.success(`"${assignment.title}" added to calendar`);
     } catch {
       toast.error("Failed to sync assignment");
