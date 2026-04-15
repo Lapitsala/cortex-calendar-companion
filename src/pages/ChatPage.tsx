@@ -8,6 +8,7 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useGroups } from "@/hooks/useGroups";
+import { useClassroomData } from "@/hooks/useClassroomData";
 import { useCalendarShares } from "@/hooks/useCalendarShares";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
