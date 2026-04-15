@@ -43,6 +43,7 @@ const ChatPage = () => {
   const { events, createEvent } = useCalendarEvents();
   const { groups, getMembers } = useGroups();
   const { sharedWithMe } = useCalendarShares();
+  const { courses, assignments, hasData: hasClassroomData } = useClassroomData();
 
   const welcomeMessage: LocalMessage = {
     id: "welcome",
