@@ -192,10 +192,32 @@ const ChatPage = () => {
     const parts: string[] = [];
     for (const g of groups) {
       const members = await getMembers(g.id);
-      const memberList = members.map(m => `${m.user_id.slice(0, 8)} (${m.role}, ${m.status})`).join(", ");
-      parts.push(`Group "${g.name}": ${members.length} members [${memberList}]`);
+      const acceptedMembers = members.filter(m => m.status === "accepted");
+      const memberLines: string[] = [];
+      for (const m of acceptedMembers) {
+        const name = m.display_name || m.email || m.user_id.slice(0, 8);
+        // Fetch this member's calendar events for the next 7 days
+        const today = new Date().toISOString().split("T")[0];
+        const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+        const { data: memberEvents } = await supabase
+          .from("calendar_events")
+          .select("title, event_date, start_time, end_time")
+          .eq("user_id", m.user_id)
+          .gte("event_date", today)
+          .lte("event_date", nextWeek)
+          .order("event_date", { ascending: true });
+        if (memberEvents && memberEvents.length > 0) {
+          const eventList = memberEvents.map(e =>
+            `      ${e.event_date} ${e.start_time}${e.end_time ? `-${e.end_time}` : ""}: ${e.title}`
+          ).join("\n");
+          memberLines.push(`    ${name} (${m.role}) — BUSY times:\n${eventList}`);
+        } else {
+          memberLines.push(`    ${name} (${m.role}) — No events scheduled (fully free)`);
+        }
+      }
+      parts.push(`  Group "${g.name}" (${acceptedMembers.length} members):\n${memberLines.join("\n")}`);
     }
-    return "\n\nUser's groups:\n" + parts.join("\n");
+    return "\n\nUser's groups with member schedules (next 7 days):\n" + parts.join("\n\n");
   };
 
   const buildClassroomContext = () => {
