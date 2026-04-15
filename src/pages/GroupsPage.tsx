@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Users, X, UserPlus, Clock, Trash2, Check, XCircle, LogOut, Shield, ShieldCheck, Pencil, UserMinus } from "lucide-react";
+import {
+  Plus, Users, X, UserPlus, Clock, Trash2, Check, XCircle, LogOut,
+  Shield, ShieldCheck, Pencil, UserMinus, CalendarPlus, HelpCircle,
+  MapPin, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { useGroups, Group, GroupMember } from "@/hooks/useGroups";
+import { useGroupEvents, GroupEvent, GroupEventResponse } from "@/hooks/useGroupEvents";
 import { useAuth } from "@/hooks/useAuth";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
-import EventCreateModal from "@/components/EventCreateModal";
 import { useNavigate } from "react-router-dom";
 
 const GroupsPage = () => {
@@ -15,7 +19,12 @@ const GroupsPage = () => {
     getMembers, inviteMember, respondToInvite,
     leaveGroup, kickMember, requestAdmin, refetch,
   } = useGroups();
+  const {
+    groupEvents, eventResponses, fetchGroupEvents, fetchEventResponses,
+    createGroupEvent, respondToEvent, deleteGroupEvent,
+  } = useGroupEvents();
   const navigate = useNavigate();
+
   const [showCreate, setShowCreate] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
@@ -24,11 +33,22 @@ const GroupsPage = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<GroupMember[]>([]);
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [kickTarget, setKickTarget] = useState<GroupMember | null>(null);
+
+  // Group event creation
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [eventForm, setEventForm] = useState({
+    title: "", description: "", event_date: new Date().toISOString().split("T")[0],
+    start_time: "", end_time: "", location: "",
+  });
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  // Event detail
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  const [eventResponsesMap, setEventResponsesMap] = useState<Record<string, GroupEventResponse[]>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -44,9 +64,17 @@ const GroupsPage = () => {
     loadPending();
   }, [groups, user]);
 
+  // Load events when group selected
+  useEffect(() => {
+    if (selectedGroup) {
+      fetchGroupEvents(selectedGroup.id);
+    }
+  }, [selectedGroup]);
+
   const loadMembers = async (group: Group) => {
     setSelectedGroup(group);
     setEditing(false);
+    setExpandedEvent(null);
     const m = await getMembers(group.id);
     setMembers(m);
   };
@@ -110,12 +138,63 @@ const GroupsPage = () => {
     setEditing(true);
   };
 
+  const handleCreateGroupEvent = async () => {
+    if (!selectedGroup || !eventForm.title.trim() || !eventForm.event_date || !eventForm.start_time) {
+      toast.error("Title, date, and start time are required");
+      return;
+    }
+    setSavingEvent(true);
+    try {
+      await createGroupEvent(selectedGroup.id, {
+        title: eventForm.title,
+        description: eventForm.description || undefined,
+        event_date: eventForm.event_date,
+        start_time: eventForm.start_time,
+        end_time: eventForm.end_time || undefined,
+        location: eventForm.location || undefined,
+      });
+      setEventForm({ title: "", description: "", event_date: new Date().toISOString().split("T")[0], start_time: "", end_time: "", location: "" });
+      setShowCreateEvent(false);
+      await fetchGroupEvents(selectedGroup.id);
+    } catch {} finally {
+      setSavingEvent(false);
+    }
+  };
+
+  const toggleEventDetail = async (eventId: string) => {
+    if (expandedEvent === eventId) {
+      setExpandedEvent(null);
+      return;
+    }
+    setExpandedEvent(eventId);
+    const responses = await fetchEventResponses(eventId);
+    setEventResponsesMap(prev => ({ ...prev, [eventId]: responses }));
+  };
+
+  const handleRespond = async (eventId: string, response: "accepted" | "declined" | "maybe") => {
+    await respondToEvent(eventId, response);
+    const responses = await fetchEventResponses(eventId);
+    setEventResponsesMap(prev => ({ ...prev, [eventId]: responses }));
+  };
+
   const myMembership = members.find(m => m.user_id === user?.id);
   const isAdmin = myMembership?.role === "admin" || selectedGroup?.created_by === user?.id;
 
   const getMemberName = (m: GroupMember) => {
     if (m.user_id === user?.id) return "You";
     return m.display_name || m.email || m.user_id.slice(0, 8);
+  };
+
+  const getResponseLabel = (r: string) => {
+    if (r === "accepted") return "ตกลง";
+    if (r === "declined") return "ไม่ตกลง";
+    return "ไม่แน่ใจ";
+  };
+
+  const getResponseColor = (r: string) => {
+    if (r === "accepted") return "bg-success/10 text-success";
+    if (r === "declined") return "bg-destructive/10 text-destructive";
+    return "bg-warning/10 text-warning";
   };
 
   return (
@@ -126,9 +205,6 @@ const GroupsPage = () => {
             <h1 className="font-display text-lg font-bold text-foreground">Groups</h1>
             <p className="text-xs text-muted-foreground">Collaborate and schedule together</p>
           </div>
-          <button onClick={() => setShowCreateEvent(true)} className="px-3 py-2 rounded-xl bg-primary/10 text-primary text-xs font-medium active:scale-95">
-            Create Event
-          </button>
         </div>
       </div>
 
@@ -235,8 +311,8 @@ const GroupsPage = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center" onClick={() => setSelectedGroup(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-              
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+
               {/* Header */}
               <div className="flex items-center justify-between">
                 {editing ? (
@@ -269,6 +345,158 @@ const GroupsPage = () => {
                 <p className="text-xs text-muted-foreground">{selectedGroup.description}</p>
               )}
 
+              {/* Group Events */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase">Group Events</h4>
+                  <button
+                    onClick={() => setShowCreateEvent(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-medium active:scale-95"
+                  >
+                    <CalendarPlus className="w-3 h-3" /> New Event
+                  </button>
+                </div>
+
+                {groupEvents.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-3">No events yet</p>
+                )}
+
+                {groupEvents.map(ev => {
+                  const isExpanded = expandedEvent === ev.id;
+                  const responses = eventResponsesMap[ev.id] || [];
+                  const myResponse = responses.find(r => r.user_id === user?.id);
+                  const accepted = responses.filter(r => r.response === "accepted");
+                  const declined = responses.filter(r => r.response === "declined");
+                  const maybe = responses.filter(r => r.response === "maybe");
+
+                  return (
+                    <div key={ev.id} className="bg-secondary/50 border border-border rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => toggleEventDetail(ev.id)}
+                        className="w-full text-left p-3 flex items-start gap-3"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <CalendarPlus className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h5 className="text-sm font-semibold text-foreground truncate">{ev.title}</h5>
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                            <span>{ev.event_date}</span>
+                            <span>{ev.start_time}{ev.end_time ? ` - ${ev.end_time}` : ""}</span>
+                          </div>
+                          {ev.location && (
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+                              <MapPin className="w-3 h-3" /> {ev.location}
+                            </div>
+                          )}
+                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">by {ev.creator_name}</p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {myResponse && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getResponseColor(myResponse.response)}`}>
+                              {getResponseLabel(myResponse.response)}
+                            </span>
+                          )}
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                        </div>
+                      </button>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-3 pb-3 space-y-3 border-t border-border pt-3">
+                              {ev.description && (
+                                <p className="text-xs text-muted-foreground">{ev.description}</p>
+                              )}
+
+                              {/* Response buttons */}
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleRespond(ev.id, "accepted")}
+                                  className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 active:scale-95 transition-all ${
+                                    myResponse?.response === "accepted" ? "bg-success text-white" : "bg-success/10 text-success"
+                                  }`}
+                                >
+                                  <Check className="w-3.5 h-3.5" /> ตกลง
+                                </button>
+                                <button
+                                  onClick={() => handleRespond(ev.id, "declined")}
+                                  className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 active:scale-95 transition-all ${
+                                    myResponse?.response === "declined" ? "bg-destructive text-white" : "bg-destructive/10 text-destructive"
+                                  }`}
+                                >
+                                  <XCircle className="w-3.5 h-3.5" /> ไม่ตกลง
+                                </button>
+                                <button
+                                  onClick={() => handleRespond(ev.id, "maybe")}
+                                  className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 active:scale-95 transition-all ${
+                                    myResponse?.response === "maybe" ? "bg-warning text-white" : "bg-warning/10 text-warning"
+                                  }`}
+                                >
+                                  <HelpCircle className="w-3.5 h-3.5" /> ไม่แน่ใจ
+                                </button>
+                              </div>
+
+                              {/* Response status */}
+                              {responses.length > 0 && (
+                                <div className="space-y-1.5">
+                                  <h6 className="text-[11px] font-semibold text-muted-foreground">สถานะการตอบรับ ({responses.length})</h6>
+                                  {accepted.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {accepted.map(r => (
+                                        <span key={r.id} className="text-[10px] px-2 py-0.5 rounded-full bg-success/10 text-success">
+                                          ✓ {r.user_id === user?.id ? "You" : r.display_name || r.email || r.user_id.slice(0, 6)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {declined.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {declined.map(r => (
+                                        <span key={r.id} className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
+                                          ✗ {r.user_id === user?.id ? "You" : r.display_name || r.email || r.user_id.slice(0, 6)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {maybe.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {maybe.map(r => (
+                                        <span key={r.id} className="text-[10px] px-2 py-0.5 rounded-full bg-warning/10 text-warning">
+                                          ? {r.user_id === user?.id ? "You" : r.display_name || r.email || r.user_id.slice(0, 6)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Delete event (creator only) */}
+                              {ev.created_by === user?.id && (
+                                <button
+                                  onClick={async () => {
+                                    await deleteGroupEvent(ev.id);
+                                    if (selectedGroup) fetchGroupEvents(selectedGroup.id);
+                                  }}
+                                  className="w-full py-2 rounded-lg bg-destructive/10 text-destructive text-xs font-medium flex items-center justify-center gap-1 active:scale-95"
+                                >
+                                  <Trash2 className="w-3 h-3" /> Delete Event
+                                </button>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Members */}
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase">Members ({members.filter(m => m.status === "accepted").length})</h4>
@@ -292,7 +520,6 @@ const GroupsPage = () => {
                     ) : (
                       <Shield className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                     )}
-                    {/* Kick button for admins (not self) */}
                     {isAdmin && m.user_id !== user?.id && m.status === "accepted" && (
                       <button onClick={() => setKickTarget(m)} className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center active:scale-95 shrink-0">
                         <UserMinus className="w-3 h-3 text-destructive" />
@@ -316,7 +543,6 @@ const GroupsPage = () => {
 
               {/* Action buttons */}
               <div className="space-y-2">
-                {/* Request admin (only for non-admin members) */}
                 {myMembership && myMembership.role !== "admin" && myMembership.status === "accepted" && (
                   <button
                     onClick={() => handleRequestAdmin(myMembership)}
@@ -326,7 +552,6 @@ const GroupsPage = () => {
                   </button>
                 )}
 
-                {/* Find common time */}
                 <button
                   onClick={() => navigate(`/chat?event=Find a common meeting time for the group "${selectedGroup.name}"`)}
                   className="w-full py-2.5 rounded-xl bg-accent text-accent-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
@@ -334,7 +559,6 @@ const GroupsPage = () => {
                   <Clock className="w-4 h-4" /> Find Common Time with AI
                 </button>
 
-                {/* Leave group (not for creator) */}
                 {myMembership && selectedGroup.created_by !== user?.id && (
                   <button
                     onClick={handleLeave}
@@ -343,6 +567,50 @@ const GroupsPage = () => {
                     <LogOut className="w-4 h-4" /> Leave Group
                   </button>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create group event modal */}
+      <AnimatePresence>
+        {showCreateEvent && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[70] flex items-end justify-center"
+            onClick={() => setShowCreateEvent(false)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-base font-bold text-foreground">New Group Event</h3>
+                <button onClick={() => setShowCreateEvent(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+              <input value={eventForm.title} onChange={e => setEventForm(p => ({ ...p, title: e.target.value }))} placeholder="Event title *"
+                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <input value={eventForm.description} onChange={e => setEventForm(p => ({ ...p, description: e.target.value }))} placeholder="Description (optional)"
+                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={eventForm.event_date} onChange={e => setEventForm(p => ({ ...p, event_date: e.target.value }))}
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                <input type="time" value={eventForm.start_time} onChange={e => setEventForm(p => ({ ...p, start_time: e.target.value }))}
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="time" value={eventForm.end_time} onChange={e => setEventForm(p => ({ ...p, end_time: e.target.value }))} placeholder="End time"
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                <input value={eventForm.location} onChange={e => setEventForm(p => ({ ...p, location: e.target.value }))} placeholder="Location"
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button onClick={() => setShowCreateEvent(false)} className="py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98]">
+                  Cancel
+                </button>
+                <button onClick={handleCreateGroupEvent} disabled={savingEvent || !eventForm.title.trim() || !eventForm.start_time}
+                  className="py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] disabled:opacity-50">
+                  {savingEvent ? "Saving..." : "Create"}
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -363,12 +631,6 @@ const GroupsPage = () => {
         message={`Remove ${kickTarget ? getMemberName(kickTarget) : ""} from this group?`}
         onConfirm={handleKick}
         onCancel={() => setKickTarget(null)}
-      />
-
-      <EventCreateModal
-        open={showCreateEvent}
-        onClose={() => setShowCreateEvent(false)}
-        title="Create Group Event"
       />
     </div>
   );
