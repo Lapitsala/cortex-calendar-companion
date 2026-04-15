@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Plus, Clock, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useCalendarEvents, CalendarEvent } from "@/hooks/useCalendarEvents";
-import { useWantToDo } from "@/hooks/useWantToDo";
 import MonthView from "@/components/calendar/MonthView";
 import WeekView from "@/components/calendar/WeekView";
 import DayView from "@/components/calendar/DayView";
@@ -24,7 +23,6 @@ const CalendarPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const { events, deleteEvent } = useCalendarEvents();
-  const { items: reminders, update: updateReminder } = useWantToDo();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -128,17 +126,8 @@ const CalendarPage = () => {
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {viewMode === "month" && (
           <>
-            <div className="bg-card border border-border rounded-xl overflow-hidden mb-4">
-              <MonthView
-                year={year}
-                month={month}
-                selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
-                events={events}
-                reminders={reminders}
-                onToggleReminder={(id, completed) => updateReminder(id, { is_completed: completed })}
-                onEventTap={handleEventTap}
-              />
+            <div className="bg-card border border-border rounded-xl p-3 mb-4">
+              <MonthView year={year} month={month} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={events} />
             </div>
             {/* Events list for selected day */}
             <div className="flex items-center justify-between mb-2">
