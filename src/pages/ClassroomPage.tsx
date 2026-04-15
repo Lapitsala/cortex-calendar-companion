@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle, Bell } from "lucide-react";
+import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useClassroomData } from "@/hooks/useClassroomData";
@@ -17,7 +17,7 @@ type TabType = "all" | "due_soon" | "upcoming" | "submitted";
 const ClassroomPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
-  const { courses, assignments, syncedIds, saveSyncedIds, hasData } = useClassroomData();
+  const { courses, assignments, hasData, loading, markSynced } = useClassroomData();
   const { createEvent } = useCalendarEvents();
   const autoSyncDone = useRef(false);
 
@@ -40,28 +40,26 @@ const ClassroomPage = () => {
 
   // Auto-sync on mount
   useEffect(() => {
-    if (autoSyncDone.current || assignments.length === 0) return;
+    if (autoSyncDone.current || loading || assignments.length === 0) return;
     autoSyncDone.current = true;
 
-    const toSync = assignments.filter(a => a.status !== "submitted" && !syncedIds.has(a.id));
+    const toSync = assignments.filter(a => a.status !== "submitted" && !a.isSynced);
     if (toSync.length === 0) return;
 
     (async () => {
-      const newSynced = new Set(syncedIds);
       let count = 0;
       for (const a of toSync) {
         try {
           await syncAssignmentToCalendar(a);
-          newSynced.add(a.id);
+          await markSynced(a.id);
           count++;
         } catch {}
       }
       if (count > 0) {
-        saveSyncedIds(newSynced);
         toast.success(`Auto-synced ${count} assignments to calendar`);
       }
     })();
-  }, [assignments, syncedIds, syncAssignmentToCalendar]);
+  }, [assignments, loading, syncAssignmentToCalendar, markSynced]);
 
   const filteredAssignments = assignments.filter((a) => {
     if (selectedCourse && a.courseId !== selectedCourse) return false;
@@ -76,6 +74,14 @@ const ClassroomPage = () => {
     { key: "upcoming", label: "Upcoming", count: assignments.filter(a => (!selectedCourse || a.courseId === selectedCourse) && a.status === "upcoming").length },
     { key: "submitted", label: "Done", count: assignments.filter(a => (!selectedCourse || a.courseId === selectedCourse) && a.status === "submitted").length },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-[100dvh] pb-20 bg-background items-center justify-center">
+        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   if (!hasData) {
     return (
@@ -163,7 +169,6 @@ const ClassroomPage = () => {
               const course = getCourse(assignment.courseId);
               const config = statusConfig[assignment.status];
               const StatusIcon = config.icon;
-              const isSynced = syncedIds.has(assignment.id);
 
               return (
                 <motion.div
@@ -202,10 +207,10 @@ const ClassroomPage = () => {
                         {assignment.status !== "submitted" && (
                           <span
                             className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-lg ${
-                              isSynced ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
+                              assignment.isSynced ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
                             }`}
                           >
-                            {isSynced ? (
+                            {assignment.isSynced ? (
                               <><CheckCircle2 className="w-3 h-3" /> Synced</>
                             ) : (
                               <><Clock className="w-3 h-3" /> Syncing...</>

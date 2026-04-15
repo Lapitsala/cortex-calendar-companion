@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface Course {
   id: string;
@@ -17,11 +19,8 @@ export interface Assignment {
   points: number;
   status: "upcoming" | "due_soon" | "overdue" | "submitted";
   description: string;
+  isSynced: boolean;
 }
-
-const COURSES_KEY = "classroom_courses";
-const ASSIGNMENTS_KEY = "classroom_assignments";
-const SYNCED_IDS_KEY = "classroom_synced_ids";
 
 const DEFAULT_COLORS = [
   "hsl(var(--primary))",
@@ -35,48 +34,109 @@ const DEFAULT_COLORS = [
 ];
 
 export const useClassroomData = () => {
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [syncedIds, setSyncedIds] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem(SYNCED_IDS_KEY);
-      if (raw) return new Set(JSON.parse(raw));
-    } catch {}
-    return new Set();
-  });
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    if (!user) {
+      setCourses([]);
+      setAssignments([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const [cRes, aRes] = await Promise.all([
+      supabase.from("classroom_courses").select("*").eq("user_id", user.id),
+      supabase.from("classroom_assignments").select("*").eq("user_id", user.id),
+    ]);
+
+    if (cRes.data) {
+      setCourses(cRes.data.map(c => ({
+        id: c.id,
+        name: c.name,
+        section: c.section,
+        teacher: c.teacher,
+        color: c.color,
+      })));
+    }
+    if (aRes.data) {
+      setAssignments(aRes.data.map(a => ({
+        id: a.id,
+        courseId: a.course_id,
+        title: a.title,
+        dueDate: a.due_date,
+        dueTime: a.due_time,
+        points: a.points,
+        status: a.status as Assignment["status"],
+        description: a.description,
+        isSynced: a.is_synced,
+      })));
+    }
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
-    const rawC = localStorage.getItem(COURSES_KEY);
-    const rawA = localStorage.getItem(ASSIGNMENTS_KEY);
-    if (rawC) setCourses(JSON.parse(rawC));
-    if (rawA) setAssignments(JSON.parse(rawA));
+    fetchData();
+  }, [fetchData]);
+
+  const importData = useCallback(async (newCourses: Course[], newAssignments: Assignment[]) => {
+    if (!user) return;
+
+    // Delete existing data first
+    await supabase.from("classroom_assignments").delete().eq("user_id", user.id);
+    await supabase.from("classroom_courses").delete().eq("user_id", user.id);
+
+    // Insert courses and get back IDs
+    const courseIdMap = new Map<string, string>(); // old id -> new uuid
+    for (const c of newCourses) {
+      const { data } = await supabase.from("classroom_courses").insert({
+        user_id: user.id,
+        name: c.name,
+        section: c.section,
+        teacher: c.teacher,
+        color: c.color,
+      }).select("id").single();
+      if (data) courseIdMap.set(c.id, data.id);
+    }
+
+    // Insert assignments with mapped course IDs
+    const assignmentRows = newAssignments
+      .filter(a => courseIdMap.has(a.courseId))
+      .map(a => ({
+        user_id: user.id,
+        course_id: courseIdMap.get(a.courseId)!,
+        title: a.title,
+        description: a.description,
+        due_date: a.dueDate,
+        due_time: a.dueTime,
+        points: a.points,
+        status: a.status,
+        is_synced: false,
+      }));
+
+    if (assignmentRows.length > 0) {
+      await supabase.from("classroom_assignments").insert(assignmentRows);
+    }
+
+    await fetchData();
+  }, [user, fetchData]);
+
+  const markSynced = useCallback(async (assignmentId: string) => {
+    await supabase.from("classroom_assignments").update({ is_synced: true }).eq("id", assignmentId);
+    setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, isSynced: true } : a));
   }, []);
 
-  const saveSyncedIds = (ids: Set<string>) => {
-    setSyncedIds(ids);
-    localStorage.setItem(SYNCED_IDS_KEY, JSON.stringify([...ids]));
-  };
-
-  const importData = useCallback((newCourses: Course[], newAssignments: Assignment[]) => {
-    setCourses(newCourses);
-    setAssignments(newAssignments);
-    localStorage.setItem(COURSES_KEY, JSON.stringify(newCourses));
-    localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(newAssignments));
-    // Reset synced state for new data
-    localStorage.removeItem(SYNCED_IDS_KEY);
-    setSyncedIds(new Set());
-  }, []);
-
-  const clearAll = useCallback(() => {
+  const clearAll = useCallback(async () => {
+    if (!user) return;
+    await supabase.from("classroom_assignments").delete().eq("user_id", user.id);
+    await supabase.from("classroom_courses").delete().eq("user_id", user.id);
     setCourses([]);
     setAssignments([]);
-    setSyncedIds(new Set());
-    localStorage.removeItem(COURSES_KEY);
-    localStorage.removeItem(ASSIGNMENTS_KEY);
-    localStorage.removeItem(SYNCED_IDS_KEY);
-  }, []);
+  }, [user]);
 
   const hasData = courses.length > 0 || assignments.length > 0;
 
-  return { courses, assignments, syncedIds, saveSyncedIds, importData, clearAll, hasData, DEFAULT_COLORS };
+  return { courses, assignments, loading, importData, clearAll, hasData, markSynced, DEFAULT_COLORS, fetchData };
 };
