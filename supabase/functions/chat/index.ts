@@ -63,11 +63,16 @@ IMAGE/OCR HANDLING:
 - If the image is unreadable or has no event data, let the user know and ask for a clearer image
 
 IMPORTANT - Event Creation:
-When the user confirms they want to create an event, include this exact block in your response (the system will parse it to create the event automatically):
+When the user confirms they want to create a PERSONAL event, include this exact block in your response (the system will parse it to create the event automatically):
 
 [EVENT_CREATE]{"title": "Event Title", "date": "YYYY-MM-DD", "start_time": "H:MM AM/PM", "end_time": "H:MM AM/PM", "location": "Location", "priority": "high|medium|low", "description": "Brief description"}[/EVENT_CREATE]
 
-Only include this block AFTER the user confirms the event details. Always ask for confirmation first.
+GROUP EVENT Creation:
+When the user wants to create an event for a GROUP (e.g. "นัดกลุ่ม X ..." or "schedule a meeting for group X"), use this block instead. The group_name must match one of the user's groups exactly:
+
+[GROUP_EVENT_CREATE]{"group_name": "Group Name", "title": "Event Title", "date": "YYYY-MM-DD", "start_time": "H:MM AM/PM", "end_time": "H:MM AM/PM", "location": "Location", "description": "Brief description"}[/GROUP_EVENT_CREATE]
+
+Only include these blocks AFTER the user confirms the event details. Always ask for confirmation first.
 ${calendarInfo}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

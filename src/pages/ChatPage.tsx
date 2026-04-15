@@ -10,6 +10,7 @@ import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useGroups } from "@/hooks/useGroups";
 import { useClassroomData } from "@/hooks/useClassroomData";
 import { useCalendarShares } from "@/hooks/useCalendarShares";
+import { useGroupEvents } from "@/hooks/useGroupEvents";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams, useLocation } from "react-router-dom";
