@@ -115,15 +115,32 @@ export const useGroups = () => {
       .eq("email", email)
       .single();
     if (!profile) { toast.error("User not found"); return; }
-    
+
+    // Check if there's an existing declined record — re-invite by updating to pending
+    const { data: existing } = await supabase
+      .from("group_members")
+      .select("id, status")
+      .eq("group_id", groupId)
+      .eq("user_id", profile.user_id)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === "accepted") { toast.error("User already in group"); return; }
+      if (existing.status === "pending") { toast.error("Invitation already pending"); return; }
+      // declined — re-invite
+      const { error } = await supabase
+        .from("group_members")
+        .update({ status: "pending", role: "member" })
+        .eq("id", existing.id);
+      if (error) { toast.error("Failed to re-invite"); throw error; }
+      toast.success("Invitation sent!");
+      return;
+    }
+
     const { error } = await supabase
       .from("group_members")
       .insert({ group_id: groupId, user_id: profile.user_id, role: "member", status: "pending" });
-    if (error) {
-      if (error.code === "23505") toast.error("User already in group");
-      else toast.error("Failed to invite");
-      throw error;
-    }
+    if (error) { toast.error("Failed to invite"); throw error; }
     toast.success("Invitation sent!");
   };
 
