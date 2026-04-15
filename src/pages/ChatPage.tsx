@@ -8,6 +8,7 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useGroups } from "@/hooks/useGroups";
+import { useClassroomData } from "@/hooks/useClassroomData";
 import { useCalendarShares } from "@/hooks/useCalendarShares";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ const ChatPage = () => {
   const { events, createEvent } = useCalendarEvents();
   const { groups, getMembers } = useGroups();
   const { sharedWithMe } = useCalendarShares();
+  const { courses, assignments, hasData: hasClassroomData } = useClassroomData();
 
   const welcomeMessage: LocalMessage = {
     id: "welcome",
@@ -197,26 +199,11 @@ const ChatPage = () => {
   };
 
   const buildClassroomContext = () => {
-    const MOCK_COURSES = [
-      { id: "c1", name: "Computer Science 101", teacher: "Dr. Smith" },
-      { id: "c2", name: "Mathematics II", teacher: "Prof. Johnson" },
-      { id: "c3", name: "Physics Lab", teacher: "Dr. Lee" },
-      { id: "c4", name: "English Literature", teacher: "Ms. Davis" },
-    ];
-    const MOCK_ASSIGNMENTS = [
-      { id: "a1", courseId: "c1", title: "Algorithm Analysis Report", dueDate: "2026-04-14", dueTime: "23:59", points: 100, status: "due_soon", description: "Write a report on time complexity of sorting algorithms" },
-      { id: "a2", courseId: "c1", title: "Lab 5: Binary Trees", dueDate: "2026-04-18", dueTime: "17:00", points: 50, status: "upcoming", description: "Implement BST operations" },
-      { id: "a3", courseId: "c2", title: "Problem Set 7", dueDate: "2026-04-13", dueTime: "09:00", points: 80, status: "due_soon", description: "Integration and derivatives" },
-      { id: "a4", courseId: "c2", title: "Midterm Review", dueDate: "2026-04-20", dueTime: "12:00", points: 0, status: "upcoming", description: "Review chapters 1-7" },
-      { id: "a5", courseId: "c3", title: "Lab Report: Optics", dueDate: "2026-04-11", dueTime: "23:59", points: 75, status: "overdue", description: "Submit lab report for optics experiment" },
-      { id: "a6", courseId: "c3", title: "Pre-lab: Thermodynamics", dueDate: "2026-04-16", dueTime: "08:00", points: 20, status: "upcoming", description: "Complete pre-lab questions" },
-      { id: "a7", courseId: "c4", title: "Essay: Shakespeare", dueDate: "2026-04-10", dueTime: "23:59", points: 150, status: "submitted", description: "Analysis of Hamlet Act 3" },
-      { id: "a8", courseId: "c4", title: "Reading Response Ch.12", dueDate: "2026-04-15", dueTime: "23:59", points: 30, status: "due_soon", description: "One-page response to chapter 12" },
-    ];
-    const getCourse = (id: string) => MOCK_COURSES.find(c => c.id === id);
-    const lines = MOCK_ASSIGNMENTS.map(a => {
+    if (!hasClassroomData) return "";
+    const getCourse = (id: string) => courses.find(c => c.id === id);
+    const lines = assignments.map(a => {
       const course = getCourse(a.courseId);
-      return `  - [${a.status.toUpperCase()}] "${a.title}" (${course?.name}) — due ${a.dueDate} ${a.dueTime}, ${a.points} pts. ${a.description}`;
+      return `  - [${a.status.toUpperCase()}] "${a.title}" (${course?.name || "Unknown"}) — due ${a.dueDate} ${a.dueTime}, ${a.points} pts. ${a.description}`;
     });
     return `\n\nGoogle Classroom Assignments:\n${lines.join("\n")}`;
   };
