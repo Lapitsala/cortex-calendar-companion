@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ArrowDownToLine } from "lucide-react";
+import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle, ChevronRight, ArrowDownToLine } from "lucide-react";
 import { toast } from "sonner";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 
@@ -41,6 +41,20 @@ const MOCK_ASSIGNMENTS: Assignment[] = [
   { id: "a8", courseId: "c4", title: "Reading Response Ch.12", dueDate: "2026-04-15", dueTime: "23:59", points: 30, status: "due_soon", description: "One-page response to chapter 12" },
 ];
 
+const SYNCED_IDS_KEY = "classroom_synced_ids";
+
+const loadSyncedIds = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(SYNCED_IDS_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+};
+
+const saveSyncedIds = (ids: Set<string>) => {
+  localStorage.setItem(SYNCED_IDS_KEY, JSON.stringify([...ids]));
+};
+
 const statusConfig = {
   upcoming: { label: "Upcoming", color: "text-muted-foreground", bg: "bg-secondary", icon: Clock },
   due_soon: { label: "Due Soon", color: "text-warning", bg: "bg-warning/15", icon: AlertCircle },
@@ -53,10 +67,58 @@ type TabType = "all" | "due_soon" | "upcoming" | "submitted";
 const ClassroomPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncedIds, setSyncedIds] = useState<Set<string>>(new Set());
+  const [syncedIds, setSyncedIds] = useState<Set<string>>(loadSyncedIds);
   const [isConnected] = useState(true);
-  const { createEvent } = useCalendarEvents();
+  const { createEvent, events } = useCalendarEvents();
+  const autoSyncDone = useRef(false);
+
+  const getCourse = (courseId: string) => MOCK_COURSES.find((c) => c.id === courseId)!;
+
+  // Reminder prefix to distinguish from regular events
+  const REMINDER_PREFIX = "⏰ ";
+
+  const syncAssignmentToCalendar = useCallback(async (assignment: Assignment) => {
+    const course = getCourse(assignment.courseId);
+    await createEvent({
+      title: `${REMINDER_PREFIX}${assignment.title}`,
+      description: `[Reminder] ${course.name}\n${assignment.description}\nPoints: ${assignment.points}`,
+      event_date: assignment.dueDate,
+      start_time: assignment.dueTime,
+      end_time: null,
+      location: null,
+      priority: assignment.status === "overdue" ? "high" : assignment.status === "due_soon" ? "medium" : "low",
+    });
+  }, [createEvent]);
+
+  // Auto-sync on mount: sync any unsynced, non-submitted assignments
+  useEffect(() => {
+    if (autoSyncDone.current) return;
+    autoSyncDone.current = true;
+
+    const toSync = MOCK_ASSIGNMENTS.filter(
+      (a) => a.status !== "submitted" && !syncedIds.has(a.id)
+    );
+    if (toSync.length === 0) return;
+
+    (async () => {
+      const newSynced = new Set(syncedIds);
+      let count = 0;
+      for (const a of toSync) {
+        try {
+          await syncAssignmentToCalendar(a);
+          newSynced.add(a.id);
+          count++;
+        } catch {
+          // skip failed ones silently
+        }
+      }
+      if (count > 0) {
+        setSyncedIds(newSynced);
+        saveSyncedIds(newSynced);
+        toast.success(`Auto-synced ${count} assignments to calendar`);
+      }
+    })();
+  }, [syncedIds, syncAssignmentToCalendar]);
 
   const filteredAssignments = MOCK_ASSIGNMENTS.filter((a) => {
     if (selectedCourse && a.courseId !== selectedCourse) return false;
@@ -64,51 +126,6 @@ const ClassroomPage = () => {
     if (activeTab === "due_soon") return a.status === "due_soon" || a.status === "overdue";
     return a.status === activeTab;
   });
-
-  const getCourse = (courseId: string) => MOCK_COURSES.find((c) => c.id === courseId)!;
-
-  const syncAssignmentToCalendar = async (assignment: Assignment) => {
-    const course = getCourse(assignment.courseId);
-    await createEvent({
-      title: `📚 ${assignment.title}`,
-      description: `[${course.name}] ${assignment.description}\nPoints: ${assignment.points}`,
-      event_date: assignment.dueDate,
-      start_time: assignment.dueTime,
-      end_time: null,
-      location: null,
-      priority: assignment.status === "overdue" ? "high" : assignment.status === "due_soon" ? "medium" : "low",
-    });
-  };
-
-  const handleSyncAll = async () => {
-    setSyncing(true);
-    const toSync = filteredAssignments.filter((a) => a.status !== "submitted" && !syncedIds.has(a.id));
-    try {
-      for (const a of toSync) {
-        await syncAssignmentToCalendar(a);
-      }
-      const newSynced = new Set(syncedIds);
-      toSync.forEach((a) => newSynced.add(a.id));
-      setSyncedIds(newSynced);
-      toast.success(`Synced ${toSync.length} assignments to calendar`);
-    } catch {
-      toast.error("Failed to sync some assignments");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleSyncOne = async (assignment: Assignment) => {
-    try {
-      await syncAssignmentToCalendar(assignment);
-      const newSynced = new Set(syncedIds);
-      newSynced.add(assignment.id);
-      setSyncedIds(newSynced);
-      toast.success(`"${assignment.title}" added to calendar`);
-    } catch {
-      toast.error("Failed to sync assignment");
-    }
-  };
 
   const tabs: { key: TabType; label: string; count: number }[] = [
     { key: "all", label: "All", count: MOCK_ASSIGNMENTS.filter((a) => !selectedCourse || a.courseId === selectedCourse).length },
@@ -130,17 +147,9 @@ const ClassroomPage = () => {
             {isConnected && (
               <span className="flex items-center gap-1 text-[10px] text-success font-medium bg-success/10 px-2 py-1 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                Demo Mode
+                Auto-Sync
               </span>
             )}
-            <button
-              onClick={handleSyncAll}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors active:scale-95 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing..." : "Sync All"}
-            </button>
           </div>
         </div>
 
@@ -235,13 +244,11 @@ const ClassroomPage = () => {
                           )}
                         </div>
                         {assignment.status !== "submitted" && (
-                          <button
-                            onClick={() => handleSyncOne(assignment)}
-                            disabled={isSynced}
-                            className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-lg transition-all active:scale-95 ${
+                          <span
+                            className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-lg ${
                               isSynced
                                 ? "bg-success/15 text-success"
-                                : "bg-primary/10 text-primary hover:bg-primary/20"
+                                : "bg-muted text-muted-foreground"
                             }`}
                           >
                             {isSynced ? (
@@ -251,11 +258,11 @@ const ClassroomPage = () => {
                               </>
                             ) : (
                               <>
-                                <ArrowDownToLine className="w-3 h-3" />
-                                To Cal
+                                <Clock className="w-3 h-3" />
+                                Syncing...
                               </>
                             )}
-                          </button>
+                          </span>
                         )}
                       </div>
                     </div>
