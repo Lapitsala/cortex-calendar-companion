@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, Bell } from "lucide-react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
+
+const isReminder = (event: CalendarEvent) => event.title.startsWith("⏰");
 
 const priorityDot: Record<string, string> = {
   high: "bg-destructive",
@@ -122,44 +124,62 @@ const WeekView = ({ currentDate, selectedDate, onSelectDate, events, onEventTap 
               </div>
             ) : (
               <div className="space-y-2">
-                {selectedEvents.map((event, i) => (
-                  <motion.button
-                    key={event.id}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => onEventTap(event)}
-                    className="w-full text-left bg-card border border-border rounded-xl p-3.5 shadow-soft active:scale-[0.98] transition-transform"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Time column */}
-                      <div className="flex flex-col items-center pt-0.5">
-                        <div className={`w-2.5 h-2.5 rounded-full ${priorityDot[event.priority]}`} />
-                        <div className="w-px h-full bg-border mt-1" />
-                      </div>
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-foreground truncate">{event.title}</h4>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {event.start_time}
-                            {event.end_time ? ` – ${event.end_time}` : ""}
-                          </span>
-                          {event.location && (
+                {selectedEvents.map((event, i) => {
+                  const reminder = isReminder(event);
+                  return (
+                    <motion.button
+                      key={event.id}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={() => onEventTap(event)}
+                      className={`w-full text-left rounded-xl p-3.5 active:scale-[0.98] transition-transform ${
+                        reminder
+                          ? "bg-primary/5 border border-dashed border-primary/30 shadow-none"
+                          : "bg-card border border-border shadow-soft"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Time column */}
+                        <div className="flex flex-col items-center pt-0.5">
+                          {reminder ? (
+                            <Bell className="w-4 h-4 text-primary" />
+                          ) : (
+                            <div className={`w-2.5 h-2.5 rounded-full ${priorityDot[event.priority]}`} />
+                          )}
+                          <div className="w-px h-full bg-border mt-1" />
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            {reminder && (
+                              <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">Reminder</span>
+                            )}
+                            <h4 className={`text-sm font-semibold truncate ${reminder ? "text-primary" : "text-foreground"}`}>
+                              {reminder ? event.title.replace("⏰ ", "") : event.title}
+                            </h4>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {event.location}
+                              <Clock className="w-3 h-3" />
+                              {event.start_time}
+                              {event.end_time ? ` – ${event.end_time}` : ""}
                             </span>
+                            {event.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {event.location}
+                              </span>
+                            )}
+                          </div>
+                          {event.description && (
+                            <p className="text-xs text-muted-foreground mt-1 truncate">{event.description}</p>
                           )}
                         </div>
-                        {event.description && (
-                          <p className="text-xs text-muted-foreground mt-1 truncate">{event.description}</p>
-                        )}
                       </div>
-                    </div>
-                  </motion.button>
-                ))}
+                    </motion.button>
+                  );
+                })}
               </div>
             )}
           </motion.div>

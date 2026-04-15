@@ -1,11 +1,13 @@
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, Bell } from "lucide-react";
 
 const priorityColors: Record<string, string> = {
   high: "bg-destructive",
   medium: "bg-warning",
   low: "bg-success",
 };
+
+const isReminder = (event: CalendarEvent) => event.title.startsWith("⏰");
 
 interface DayViewProps {
   selectedDate: string;
@@ -36,22 +38,38 @@ const DayView = ({ selectedDate, events, onEventTap }: DayViewProps) => {
             <div key={hour} className="flex gap-3 min-h-[3rem] border-t border-border/50">
               <span className="text-[10px] text-muted-foreground w-14 pt-1 text-right flex-shrink-0">{hourStr}</span>
               <div className="flex-1 py-1 space-y-1">
-                {hourEvents.map(event => (
-                  <button
-                    key={event.id}
-                    onClick={() => onEventTap(event)}
-                    className="w-full text-left bg-card border border-border rounded-lg p-2.5 shadow-soft active:scale-[0.98] transition-transform"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-2 h-2 rounded-full ${priorityColors[event.priority]}`} />
-                      <span className="text-sm font-semibold text-foreground truncate">{event.title}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.start_time}</span>
-                      {event.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>}
-                    </div>
-                  </button>
-                ))}
+                {hourEvents.map(event => {
+                  const reminder = isReminder(event);
+                  return (
+                    <button
+                      key={event.id}
+                      onClick={() => onEventTap(event)}
+                      className={`w-full text-left rounded-lg p-2.5 active:scale-[0.98] transition-transform ${
+                        reminder
+                          ? "bg-primary/5 border border-dashed border-primary/30"
+                          : "bg-card border border-border shadow-soft"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {reminder ? (
+                          <Bell className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <div className={`w-2 h-2 rounded-full ${priorityColors[event.priority]}`} />
+                        )}
+                        <span className={`text-sm font-semibold truncate ${reminder ? "text-primary" : "text-foreground"}`}>
+                          {reminder ? event.title.replace("⏰ ", "") : event.title}
+                        </span>
+                        {reminder && (
+                          <span className="text-[9px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">Reminder</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.start_time}</span>
+                        {event.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
