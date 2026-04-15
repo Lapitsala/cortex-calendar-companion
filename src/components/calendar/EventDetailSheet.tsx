@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Clock, MapPin, MessageSquare, Trash2, Flag } from "lucide-react";
+import { X, Clock, MapPin, MessageSquare, Trash2, Flag, Bell } from "lucide-react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useNavigate } from "react-router-dom";
 
+const isReminder = (event: CalendarEvent) => event.title.startsWith("⏰");
 const priorityLabels: Record<string, { label: string; class: string }> = {
   high: { label: "High", class: "bg-destructive/10 text-destructive" },
   medium: { label: "Medium", class: "bg-warning/10 text-warning" },
@@ -44,7 +45,14 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="font-display text-lg font-bold text-foreground">{event.title}</h3>
+                {isReminder(event) && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full mb-1">
+                    <Bell className="w-3 h-3" /> Reminder
+                  </span>
+                )}
+                <h3 className="font-display text-lg font-bold text-foreground">
+                  {isReminder(event) ? event.title.replace("⏰ ", "") : event.title}
+                </h3>
                 <p className="text-sm text-muted-foreground mt-0.5">{dateFormatted}</p>
               </div>
               <button onClick={onClose} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
