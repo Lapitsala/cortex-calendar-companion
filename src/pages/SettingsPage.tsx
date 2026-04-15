@@ -51,6 +51,8 @@ const SettingsPage = () => {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [showClassroomImport, setShowClassroomImport] = useState(false);
+  const classroomData = useClassroomData();
 
   useEffect(() => {
     if (user) {
