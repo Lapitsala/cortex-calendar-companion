@@ -10,7 +10,6 @@ import ClassroomImportModal from "@/components/ClassroomImportModal";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Input } from "@/components/ui/input";
 import { useClassroomData } from "@/hooks/useClassroomData";
-import { Input } from "@/components/ui/input";
 
 interface SettingItem {
   icon: typeof Clock;
