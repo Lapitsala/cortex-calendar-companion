@@ -128,8 +128,17 @@ const CalendarPage = () => {
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {viewMode === "month" && (
           <>
-            <div className="bg-card border border-border rounded-xl p-3 mb-4">
-              <MonthView year={year} month={month} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={events} />
+            <div className="bg-card border border-border rounded-xl overflow-hidden mb-4">
+              <MonthView
+                year={year}
+                month={month}
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
+                events={events}
+                reminders={reminders}
+                onToggleReminder={(id, completed) => updateReminder(id, { is_completed: completed })}
+                onEventTap={handleEventTap}
+              />
             </div>
             {/* Events list for selected day */}
             <div className="flex items-center justify-between mb-2">
