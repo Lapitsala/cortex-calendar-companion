@@ -19,6 +19,9 @@ export interface GroupMember {
   role: string;
   status: string;
   created_at: string;
+  display_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface GroupAvailability {
@@ -69,17 +72,43 @@ export const useGroups = () => {
     await fetchGroups();
   };
 
+  const updateGroup = async (id: string, name: string, description: string | null) => {
+    const { error } = await supabase.from("groups").update({ name, description }).eq("id", id);
+    if (error) { toast.error("Failed to update group"); throw error; }
+    await fetchGroups();
+  };
+
   const getMembers = async (groupId: string): Promise<GroupMember[]> => {
     const { data, error } = await supabase
       .from("group_members")
       .select("*")
       .eq("group_id", groupId);
     if (error) throw error;
-    return (data as GroupMember[]) || [];
+    const members = (data || []) as GroupMember[];
+
+    // Fetch profiles for all member user_ids
+    const userIds = members.map(m => m.user_id);
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, email, avatar_url")
+        .in("user_id", userIds);
+      if (profiles) {
+        const profileMap = new Map(profiles.map(p => [p.user_id, p]));
+        members.forEach(m => {
+          const p = profileMap.get(m.user_id);
+          if (p) {
+            m.display_name = p.display_name;
+            m.email = p.email;
+            m.avatar_url = p.avatar_url;
+          }
+        });
+      }
+    }
+    return members;
   };
 
   const inviteMember = async (groupId: string, email: string) => {
-    // Look up user by email in profiles
     const { data: profile } = await supabase
       .from("profiles")
       .select("user_id")
@@ -107,6 +136,45 @@ export const useGroups = () => {
     toast.success(accept ? "Joined group!" : "Invitation declined");
   };
 
+  const leaveGroup = async (groupId: string) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("group_members")
+      .delete()
+      .eq("group_id", groupId)
+      .eq("user_id", user.id);
+    if (error) { toast.error("Failed to leave group"); throw error; }
+    toast.success("Left the group");
+    await fetchGroups();
+  };
+
+  const kickMember = async (memberId: string) => {
+    const { error } = await supabase
+      .from("group_members")
+      .delete()
+      .eq("id", memberId);
+    if (error) { toast.error("Failed to remove member"); throw error; }
+    toast.success("Member removed");
+  };
+
+  const requestAdmin = async (memberId: string) => {
+    // For now, directly promote to admin (in a real app this could be a request flow)
+    const { error } = await supabase
+      .from("group_members")
+      .update({ role: "admin" })
+      .eq("id", memberId);
+    if (error) { toast.error("Failed to request admin"); throw error; }
+    toast.success("Admin role granted!");
+  };
+
+  const setMemberRole = async (memberId: string, role: string) => {
+    const { error } = await supabase
+      .from("group_members")
+      .update({ role })
+      .eq("id", memberId);
+    if (error) { toast.error("Failed to update role"); throw error; }
+  };
+
   const getAvailability = async (groupId: string, date: string): Promise<GroupAvailability[]> => {
     const { data, error } = await supabase
       .from("group_availability")
@@ -125,5 +193,10 @@ export const useGroups = () => {
     if (error) throw error;
   };
 
-  return { groups, loading, createGroup, deleteGroup, getMembers, inviteMember, respondToInvite, getAvailability, setAvailability, refetch: fetchGroups };
+  return {
+    groups, loading, createGroup, deleteGroup, updateGroup,
+    getMembers, inviteMember, respondToInvite,
+    leaveGroup, kickMember, requestAdmin, setMemberRole,
+    getAvailability, setAvailability, refetch: fetchGroups,
+  };
 };
