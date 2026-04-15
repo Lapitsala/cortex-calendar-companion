@@ -51,6 +51,30 @@ const GroupsPage = () => {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [eventResponsesMap, setEventResponsesMap] = useState<Record<string, GroupEventResponse[]>>({});
 
+  // Notification badges: count of unresponded events per group
+  const [unrespondedCounts, setUnrespondedCounts] = useState<Record<string, number>>({});
+
+  const fetchUnrespondedCounts = useCallback(async () => {
+    if (!user || groups.length === 0) return;
+    const counts: Record<string, number> = {};
+    for (const g of groups) {
+      const { data: events } = await supabase
+        .from("group_events")
+        .select("id")
+        .eq("group_id", g.id);
+      if (!events || events.length === 0) { counts[g.id] = 0; continue; }
+      const eventIds = events.map(e => e.id);
+      const { data: myResponses } = await supabase
+        .from("group_event_responses")
+        .select("group_event_id")
+        .eq("user_id", user.id)
+        .in("group_event_id", eventIds);
+      const respondedIds = new Set((myResponses || []).map(r => r.group_event_id));
+      counts[g.id] = eventIds.filter(id => !respondedIds.has(id)).length;
+    }
+    setUnrespondedCounts(counts);
+  }, [user, groups]);
+
   useEffect(() => {
     if (!user) return;
     const loadPending = async () => {
