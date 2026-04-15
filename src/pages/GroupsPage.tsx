@@ -275,8 +275,13 @@ const GroupsPage = () => {
               className="w-full text-left bg-card border border-border rounded-xl p-4 active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center relative">
                   <Users className="w-5 h-5 text-primary" />
+                  {(unrespondedCounts[group.id] || 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-[10px] font-bold text-white flex items-center justify-center">
+                      {unrespondedCounts[group.id]}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-semibold text-foreground">{group.name}</h3>
