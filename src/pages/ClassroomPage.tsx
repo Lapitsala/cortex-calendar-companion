@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ArrowDownToLine } from "lucide-react";
 import { toast } from "sonner";
-import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useWantToDo } from "@/hooks/useWantToDo";
 
 interface Course {
   id: string;
