@@ -120,20 +120,21 @@ const ChatPage = () => {
     setShowHistory(false);
   };
 
+  const convertTime = (t: string) =>
+    t.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)/i, (_: string, h: string, m: string, ap: string) => {
+      let hour = parseInt(h);
+      if (ap.toUpperCase() === "PM" && hour !== 12) hour += 12;
+      if (ap.toUpperCase() === "AM" && hour === 12) hour = 0;
+      return `${hour.toString().padStart(2, "0")}:${m}`;
+    });
+
   const parseEventActions = async (text: string) => {
+    // Personal events
     const regex = /\[EVENT_CREATE\]([\s\S]*?)\[\/EVENT_CREATE\]/g;
     let match;
     while ((match = regex.exec(text)) !== null) {
       try {
         const eventData = JSON.parse(match[1]);
-        const convertTime = (t: string) =>
-          t.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)/i, (_: string, h: string, m: string, ap: string) => {
-            let hour = parseInt(h);
-            if (ap.toUpperCase() === "PM" && hour !== 12) hour += 12;
-            if (ap.toUpperCase() === "AM" && hour === 12) hour = 0;
-            return `${hour.toString().padStart(2, "0")}:${m}`;
-          });
-
         await createEvent({
           title: eventData.title || "Untitled Event",
           description: eventData.description || null,
@@ -147,6 +148,32 @@ const ChatPage = () => {
       } catch (e) {
         console.error("Failed to auto-create event:", e);
         toast.error("Failed to create event from AI response");
+      }
+    }
+
+    // Group events
+    const groupRegex = /\[GROUP_EVENT_CREATE\]([\s\S]*?)\[\/GROUP_EVENT_CREATE\]/g;
+    let groupMatch;
+    while ((groupMatch = groupRegex.exec(text)) !== null) {
+      try {
+        const eventData = JSON.parse(groupMatch[1]);
+        const targetGroup = groups.find(g => g.name.toLowerCase() === (eventData.group_name || "").toLowerCase());
+        if (!targetGroup) {
+          toast.error(`Group "${eventData.group_name}" not found`);
+          continue;
+        }
+        await createGroupEvent(targetGroup.id, {
+          title: eventData.title || "Untitled Event",
+          description: eventData.description || undefined,
+          event_date: eventData.date || new Date().toISOString().split("T")[0],
+          start_time: eventData.start_time ? convertTime(eventData.start_time) : "09:00",
+          end_time: eventData.end_time ? convertTime(eventData.end_time) : undefined,
+          location: eventData.location || undefined,
+        });
+        toast.success(`✅ Group event "${eventData.title}" created for "${targetGroup.name}"!`);
+      } catch (e) {
+        console.error("Failed to auto-create group event:", e);
+        toast.error("Failed to create group event from AI response");
       }
     }
   };
@@ -429,7 +456,7 @@ const ChatPage = () => {
     toast.success(`${ids.length} chat${ids.length > 1 ? "s" : ""} archived`);
   };
 
-  const cleanContent = (text: string) => text.replace(/\[EVENT_CREATE\][\s\S]*?\[\/EVENT_CREATE\]/g, "").trim();
+  const cleanContent = (text: string) => text.replace(/\[EVENT_CREATE\][\s\S]*?\[\/EVENT_CREATE\]/g, "").replace(/\[GROUP_EVENT_CREATE\][\s\S]*?\[\/GROUP_EVENT_CREATE\]/g, "").trim();
 
   return (
     <div className="flex flex-col h-[100dvh] bg-background">
