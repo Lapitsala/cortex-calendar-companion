@@ -112,8 +112,8 @@ const SettingsPage = () => {
       ]);
       await supabase.from("chat_sessions").delete().eq("user_id", user.id);
 
-      // Clear Classroom synced state
-      localStorage.removeItem("classroom_synced_ids");
+      // Clear Classroom data
+      classroomData.clearAll();
 
       toast.success("ล้างข้อมูลทั้งหมดเรียบร้อย");
       setShowClearConfirm(false);
@@ -173,7 +173,7 @@ const SettingsPage = () => {
         {/* Import Calendar */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Import</h2>
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
             <button
               onClick={() => setShowImport(true)}
               className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
@@ -181,6 +181,15 @@ const SettingsPage = () => {
               <Download className="w-4 h-4 text-muted-foreground" />
               <span className="flex-1 text-sm text-foreground text-left">Import from .ics file</span>
               <span className="text-xs text-muted-foreground">Google / Apple</span>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setShowClassroomImport(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors active:bg-secondary"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
+              <span className="flex-1 text-sm text-foreground text-left">Import Classroom</span>
+              <span className="text-xs text-muted-foreground">Excel (.xlsx)</span>
               <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
@@ -306,10 +315,15 @@ const SettingsPage = () => {
       </AnimatePresence>
 
       <CalendarImportModal open={showImport} onClose={() => setShowImport(false)} />
+      <ClassroomImportModal
+        open={showClassroomImport}
+        onClose={() => setShowClassroomImport(false)}
+        onImport={(courses, assignments) => classroomData.importData(courses, assignments)}
+      />
       <DeleteConfirmDialog
         open={showClearConfirm}
         title="ล้างข้อมูลทั้งหมด"
-        message="คุณต้องการลบ Events, To-do, และประวัติแชททั้งหมดใช่ไหม? การกระทำนี้ไม่สามารถย้อนกลับได้"
+        message="คุณต้องการลบ Events, To-do, ประวัติแชท และข้อมูล Classroom ทั้งหมดใช่ไหม? การกระทำนี้ไม่สามารถย้อนกลับได้"
         onConfirm={handleClearAllData}
         onCancel={() => setShowClearConfirm(false)}
       />
