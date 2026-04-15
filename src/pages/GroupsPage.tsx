@@ -204,6 +204,7 @@ const GroupsPage = () => {
     await respondToEvent(eventId, response);
     const responses = await fetchEventResponses(eventId);
     setEventResponsesMap(prev => ({ ...prev, [eventId]: responses }));
+    fetchUnrespondedCounts();
   };
 
   const myMembership = members.find(m => m.user_id === user?.id);
