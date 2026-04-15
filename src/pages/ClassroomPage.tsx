@@ -106,10 +106,7 @@ const ClassroomPage = () => {
 
   const handleSyncOne = async (assignment: Assignment) => {
     try {
-      await syncAssignmentToCalendar(assignment);
-      const newSynced = new Set(syncedIds);
-      newSynced.add(assignment.id);
-      setSyncedIds(newSynced);
+      await syncAssignmentAsReminder(assignment);
       toast.success(`"${assignment.title}" added to calendar`);
     } catch {
       toast.error("Failed to sync assignment");
