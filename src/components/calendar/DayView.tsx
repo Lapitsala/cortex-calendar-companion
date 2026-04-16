@@ -81,7 +81,7 @@ const DayView = ({ selectedDate, events, onEventTap }: DayViewProps) => {
               <button
                 key={event.id}
                 onClick={() => onEventTap(event)}
-                className={`absolute left-1 right-1 rounded-lg px-2.5 py-1.5 text-left overflow-hidden active:scale-[0.98] transition-transform border-l-[3px] ${
+                className={`absolute left-1 right-1 rounded-lg px-2.5 py-1.5 text-left overflow-hidden active:scale-[0.98] transition-transform border-l-[3px] flex flex-col justify-start ${
                   reminder
                     ? "bg-primary/10 border-l-primary border border-dashed border-primary/30"
                     : `bg-card border border-border shadow-soft ${priorityBorders[event.priority]}`

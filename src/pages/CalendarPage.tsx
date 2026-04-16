@@ -159,7 +159,7 @@ const CalendarPage = () => {
                             <h4 className="text-sm font-semibold text-foreground truncate">{event.title}</h4>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.start_time}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.start_time}{event.end_time ? ` – ${event.end_time}` : ""}</span>
                             {event.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>}
                           </div>
                         </div>
