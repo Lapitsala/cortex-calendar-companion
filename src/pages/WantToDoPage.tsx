@@ -434,6 +434,8 @@ const WantToDoPage = () => {
         onConfirm={async () => { if (deleteId) { await remove(deleteId); setDeleteId(null); toast.success("Deleted"); } }}
         onCancel={() => setDeleteId(null)}
       />
+
+      <ConflictResolverDialog {...conflictDialogProps} />
     </div>
   );
 };
