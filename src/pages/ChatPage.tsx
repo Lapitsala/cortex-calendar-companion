@@ -599,6 +599,8 @@ const ChatPage = () => {
         message="Are you sure you want to delete this chat session? All messages will be lost."
         onConfirm={handleDeleteSessionConfirm} onCancel={() => setDeleteSessionTarget(null)}
       />
+
+      <ConflictResolverDialog {...conflictDialogProps} />
     </div>
   );
 };
