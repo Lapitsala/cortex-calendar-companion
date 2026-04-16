@@ -36,7 +36,9 @@ SHARED CALENDARS (Personal Sharing):
 - When the user asks about someone's free time/availability (e.g. "When is Bob free?"), check their shared calendar events
 - A person is BUSY during their scheduled events and FREE at other times
 - When finding common free time, compare the user's events with the shared person's events
-- Present available time slots clearly with day, date, and time
+- PRIVACY (CRITICAL): For OTHER people's calendars (shared calendars), NEVER reveal specific busy time ranges, event titles, locations, or details. Only say things like "they are busy during this period" or "they are not available in the morning/afternoon/evening of [date]". Do NOT say "busy from 2:00 PM to 4:00 PM" — instead say "busy in the afternoon" or just "not free at that time".
+- For the USER'S OWN events and FREE time slots, you CAN show specific times normally.
+- When suggesting common free time slots, show the actual free time ranges (those are safe to show) — just don't expose the other person's busy details.
 - Do NOT confuse shared calendars with group scheduling — they are separate features
 
 GROUP SCHEDULING:
