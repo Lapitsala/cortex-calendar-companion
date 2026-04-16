@@ -5,8 +5,10 @@ import ReactMarkdown from "react-markdown";
 import TypingIndicator from "@/components/TypingIndicator";
 import ChatHistoryPanel from "@/components/chat/ChatHistoryPanel";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import ConflictResolverDialog from "@/components/ConflictResolverDialog";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useEventConflictCheck } from "@/hooks/useEventConflictCheck";
 import { useGroups } from "@/hooks/useGroups";
 import { useClassroomData } from "@/hooks/useClassroomData";
 import { useCalendarShares } from "@/hooks/useCalendarShares";
@@ -42,6 +44,7 @@ const ChatPage = () => {
 
   const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
   const { events, createEvent } = useCalendarEvents();
+  const { attemptCreateEvent, conflictDialogProps } = useEventConflictCheck();
   const { groups, getMembers } = useGroups();
   const { sharedWithMe } = useCalendarShares();
   const { createGroupEvent } = useGroupEvents();
@@ -135,7 +138,7 @@ const ChatPage = () => {
     while ((match = regex.exec(text)) !== null) {
       try {
         const eventData = JSON.parse(match[1]);
-        await createEvent({
+        const createdId = await attemptCreateEvent({
           title: eventData.title || "Untitled Event",
           description: eventData.description || null,
           event_date: eventData.date || new Date().toISOString().split("T")[0],
@@ -144,7 +147,9 @@ const ChatPage = () => {
           location: eventData.location || null,
           priority: eventData.priority || "medium",
         });
-        toast.success(`✅ Event "${eventData.title}" added to your calendar!`);
+        if (createdId) {
+          toast.success(`✅ Event "${eventData.title}" added to your calendar!`);
+        }
       } catch (e) {
         console.error("Failed to auto-create event:", e);
         toast.error("Failed to create event from AI response");
