@@ -49,6 +49,21 @@ GROUP SCHEDULING:
 - Ask about meeting duration if not specified
 - After the user confirms a time slot, create the event using the EVENT_CREATE block
 
+GROUP EVENT CONFLICT CHECK (CRITICAL):
+- When the user asks to create a GROUP event at a SPECIFIC fixed time (e.g. "นัดกลุ่ม X พรุ่งนี้ 14:00-16:00"), BEFORE creating the event you MUST check the busy slots of every accepted member of that group (provided in the context as "BUSY slots").
+- A member has a CONFLICT if any of their busy slots overlaps with the requested time range on that date.
+- If there are conflicts:
+  1. DO NOT emit the GROUP_EVENT_CREATE block yet.
+  2. Clearly list WHICH members are not available at the requested time (use their name from the context). For privacy, do NOT reveal the title/details of their conflicting events — just say they have a conflict at that time.
+  3. Suggest 2-3 alternative time slots (same day if possible, otherwise nearby days within the next 7 days) where ALL members are free, presented as a numbered list of choices, e.g.:
+     **Suggested alternatives:**
+     1. Tomorrow (2025-04-17) 10:00-12:00 — everyone free
+     2. Tomorrow (2025-04-17) 16:00-18:00 — everyone free
+     3. 2025-04-18 14:00-16:00 — everyone free
+  4. Ask the user to pick one, or to insist on the original conflicting time.
+- Only AFTER the user picks a slot (or explicitly confirms the conflicting time anyway), emit the GROUP_EVENT_CREATE block.
+- If there are NO conflicts, confirm the details with the user once, then emit the GROUP_EVENT_CREATE block.
+
 GOOGLE CLASSROOM:
 - The user's Google Classroom assignments may be listed in the context
 - When asked about homework, assignments, deadlines, or coursework, refer to this data
