@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Calendar as CalIcon, MessageSquare, CheckCircle2, Circle, Clock, AlertTriangle, ExternalLink, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { useWantToDo, WantToDoItem } from "@/hooks/useWantToDo";
-import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useChatSessions } from "@/hooks/useChatSessions";
+import { useEventConflictCheck } from "@/hooks/useEventConflictCheck";
+import ConflictResolverDialog from "@/components/ConflictResolverDialog";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +22,7 @@ const priorityColors = {
 
 const WantToDoPage = () => {
   const { items, loading, create, update, remove } = useWantToDo();
-  const { createEvent } = useCalendarEvents();
+  const { attemptCreateEvent, conflictDialogProps } = useEventConflictCheck();
   const { createSession, addMessage } = useChatSessions();
   const navigate = useNavigate();
 
@@ -68,7 +69,7 @@ const WantToDoPage = () => {
     // Auto-sync to calendar if deadline is set
     if (deadline && item) {
       try {
-        const event = await createEvent({
+        const eventId = await attemptCreateEvent({
           title: `✅ ${item.title}`,
           description: item.description || "From Want-to-do list",
           event_date: deadline,
@@ -77,8 +78,12 @@ const WantToDoPage = () => {
           location: null,
           priority: item.priority,
         });
-        await update(item.id, { synced_event_id: event.id });
-        toast.success("Added & synced to Calendar! 📅✨");
+        if (eventId) {
+          await update(item.id, { synced_event_id: eventId });
+          toast.success("Added & synced to Calendar! 📅✨");
+        } else {
+          toast.success("Added to your Want-to-do list! ✨");
+        }
       } catch {
         toast.success("Added to your Want-to-do list! ✨");
       }
@@ -97,7 +102,7 @@ const WantToDoPage = () => {
     if (!item.deadline) { toast.error("Set a deadline first"); return; }
     if (item.synced_event_id) { toast.info("Already synced to calendar"); return; }
     try {
-      const event = await createEvent({
+      const eventId = await attemptCreateEvent({
         title: `✅ ${item.title}`,
         description: item.description || "From Want-to-do list",
         event_date: item.deadline,
@@ -106,8 +111,10 @@ const WantToDoPage = () => {
         location: null,
         priority: item.priority,
       });
-      await update(item.id, { synced_event_id: event.id });
-      toast.success("Synced to Calendar! 📅");
+      if (eventId) {
+        await update(item.id, { synced_event_id: eventId });
+        toast.success("Synced to Calendar! 📅");
+      }
     } catch { toast.error("Failed to sync"); }
   };
 
@@ -161,7 +168,7 @@ const WantToDoPage = () => {
     // Auto-sync to calendar if deadline is set and not yet synced
     if (editDeadline && (!currentItem?.synced_event_id)) {
       try {
-        const event = await createEvent({
+        const eventId = await attemptCreateEvent({
           title: `✅ ${editTitle.trim()}`,
           description: editDescription.trim() || "From Want-to-do list",
           event_date: editDeadline,
@@ -170,8 +177,12 @@ const WantToDoPage = () => {
           location: null,
           priority: editPriority,
         });
-        updates.synced_event_id = event.id;
-        toast.success("Updated & synced to Calendar! 📅✨");
+        if (eventId) {
+          updates.synced_event_id = eventId;
+          toast.success("Updated & synced to Calendar! 📅✨");
+        } else {
+          toast.success("Updated!");
+        }
       } catch {
         toast.success("Updated!");
       }
@@ -423,6 +434,8 @@ const WantToDoPage = () => {
         onConfirm={async () => { if (deleteId) { await remove(deleteId); setDeleteId(null); toast.success("Deleted"); } }}
         onCancel={() => setDeleteId(null)}
       />
+
+      <ConflictResolverDialog {...conflictDialogProps} />
     </div>
   );
 };
