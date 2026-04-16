@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Calendar as CalIcon, MessageSquare, CheckCircle2, Circle, Clock, AlertTriangle, ExternalLink, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { useWantToDo, WantToDoItem } from "@/hooks/useWantToDo";
-import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useChatSessions } from "@/hooks/useChatSessions";
+import { useEventConflictCheck } from "@/hooks/useEventConflictCheck";
+import ConflictResolverDialog from "@/components/ConflictResolverDialog";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +22,7 @@ const priorityColors = {
 
 const WantToDoPage = () => {
   const { items, loading, create, update, remove } = useWantToDo();
-  const { createEvent } = useCalendarEvents();
+  const { attemptCreateEvent, conflictDialogProps } = useEventConflictCheck();
   const { createSession, addMessage } = useChatSessions();
   const navigate = useNavigate();
 
