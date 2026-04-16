@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
-import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useEventConflictCheck } from "@/hooks/useEventConflictCheck";
+import ConflictResolverDialog from "./ConflictResolverDialog";
 
 interface EventCreateModalProps {
   open: boolean;
@@ -23,7 +24,7 @@ interface EventFormState {
 const defaultDate = new Date().toISOString().split("T")[0];
 
 const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "Create Event" }: EventCreateModalProps) => {
-  const { createEvent } = useCalendarEvents();
+  const { attemptCreateEvent, conflictDialogProps } = useEventConflictCheck();
   const [form, setForm] = useState<EventFormState>({
     title: "",
     eventDate: initialDate,
@@ -76,7 +77,7 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
     if (!validate()) return;
     setSaving(true);
     try {
-      await createEvent({
+      const createdId = await attemptCreateEvent({
         title: form.title.trim(),
         description: null,
         event_date: form.eventDate,
@@ -85,121 +86,126 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
         location: form.location.trim() || null,
         priority: form.priority,
       });
-      toast.success("Event created successfully");
-      handleCancel();
+      if (createdId) {
+        toast.success("Event created successfully");
+        handleCancel();
+      } else {
+        setSaving(false);
+      }
     } catch {
-      // handled in hook
-    } finally {
       setSaving(false);
     }
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center"
-          onClick={handleCancel}
-        >
+    <>
+      <AnimatePresence>
+        {open && (
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg max-h-full overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[60] flex items-end justify-center"
+            onClick={handleCancel}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-base font-bold text-foreground">{title}</h3>
-              <button onClick={handleCancel} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg max-h-full overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-base font-bold text-foreground">{title}</h3>
+                <button onClick={handleCancel} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
 
-            <div className="space-y-1">
-              <input
-                value={form.title}
-                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                placeholder="Event title *"
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-              {errors.title && <p className="text-xs text-destructive px-1">{errors.title}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <input
-                  type="date"
-                  value={form.eventDate}
-                  onChange={(e) => setForm((p) => ({ ...p, eventDate: e.target.value }))}
-                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  value={form.title}
+                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="Event title *"
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                {errors.eventDate && <p className="text-xs text-destructive px-1">{errors.eventDate}</p>}
+                {errors.title && <p className="text-xs text-destructive px-1">{errors.title}</p>}
               </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <input
+                    type="date"
+                    value={form.eventDate}
+                    onChange={(e) => setForm((p) => ({ ...p, eventDate: e.target.value }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  {errors.eventDate && <p className="text-xs text-destructive px-1">{errors.eventDate}</p>}
+                </div>
+                <div className="space-y-1">
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  {errors.startTime && <p className="text-xs text-destructive px-1">{errors.startTime}</p>}
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <input
                   type="time"
-                  value={form.startTime}
-                  onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
+                  value={form.endTime}
+                  onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
+                  placeholder="End time (optional)"
                   className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                {errors.startTime && <p className="text-xs text-destructive px-1">{errors.startTime}</p>}
+                {errors.endTime && <p className="text-xs text-destructive px-1">{errors.endTime}</p>}
               </div>
-            </div>
 
-            <div className="space-y-1">
               <input
-                type="time"
-                value={form.endTime}
-                onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
-                placeholder="End time (optional)"
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                value={form.location}
+                onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                placeholder="Location (optional)"
+                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
-              {errors.endTime && <p className="text-xs text-destructive px-1">{errors.endTime}</p>}
-            </div>
 
-            <input
-              value={form.location}
-              onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
-              placeholder="Location (optional)"
-              className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
+              <div className="flex gap-2">
+                {(["low", "medium", "high"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setForm((prev) => ({ ...prev, priority: p }))}
+                    className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all active:scale-95 ${
+                      form.priority === p
+                        ? p === "high" ? "bg-destructive text-destructive-foreground" : p === "medium" ? "bg-warning text-primary-foreground" : "bg-success text-primary-foreground"
+                        : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex gap-2">
-              {(["low", "medium", "high"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setForm((prev) => ({ ...prev, priority: p }))}
-                  className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all active:scale-95 ${
-                    form.priority === p
-                      ? p === "high" ? "bg-destructive text-destructive-foreground" : p === "medium" ? "bg-warning text-primary-foreground" : "bg-success text-primary-foreground"
-                      : "bg-secondary text-muted-foreground"
-                  }`}
-                >
-                  {p}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button onClick={handleCancel} disabled={saving} className="py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98] transition-transform disabled:opacity-60">
+                  Cancel
                 </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button onClick={handleCancel} disabled={saving} className="py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98] transition-transform disabled:opacity-60">
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={!requiredComplete || saving}
-                className="py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : "Confirm"}
-              </button>
-            </div>
+                <button
+                  onClick={handleConfirm}
+                  disabled={!requiredComplete || saving}
+                  className="py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : "Confirm"}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+      <ConflictResolverDialog {...conflictDialogProps} />
+    </>
   );
 };
 
