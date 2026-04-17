@@ -252,6 +252,24 @@ export const translations = {
     "classroom.import.col.dueDate": "วันส่ง (YYYY-MM-DD)",
     "classroom.import.importing": "กำลังนำเข้า...",
     "classroom.import.pickFile": "เลือกไฟล์ Excel",
+
+    // Insights
+    "insights.title": "ข้อมูลเชิงลึก",
+    "insights.subtitle": "วิเคราะห์ไลฟ์สไตล์ของคุณ",
+    "insights.previewBanner": "โหมดทดลอง — ใช้ข้อมูลตัวอย่างเพื่อแสดงผล",
+    "insights.shareSuccess": "บันทึกรูปสำเร็จ!",
+    "insights.shareFailed": "ไม่สามารถบันทึกรูปได้",
+    "insights.lifestyle.empty": "ยังไม่มีกิจกรรมในช่วงนี้ ลองเพิ่ม event เพื่อดู insight ของคุณ",
+    "insights.lifestyle.work": "คุณเป็นคน Workaholic! ชีวิตส่วนใหญ่หมุนรอบงาน วันที่ยุ่งที่สุดคือ {day}",
+    "insights.lifestyle.study": "คุณเป็น Learner ตัวยง! ชอบเรียนรู้และพัฒนาตัวเอง Peak hour คือ {hour}",
+    "insights.lifestyle.health": "คุณเป็นสาย Healthy! ใส่ใจสุขภาพเป็นพิเศษ ดีมากเลย 💪",
+    "insights.lifestyle.social": "คุณเป็นคน Social Butterfly! ชอบเจอเพื่อนและใช้เวลากับคนรอบข้าง",
+    "insights.lifestyle.balance": "คุณมีไลฟ์สไตล์ที่ Balance ดี มีกิจกรรมหลากหลาย {n} กิจกรรม",
+    "insights.rec.start": "เริ่มวางแผนวันของคุณ — เพิ่ม event แรกในปฏิทินเลย!",
+    "insights.rec.weekend": "คุณยุ่งวันหยุดมาก ลองจัดสรรเวลาพักผ่อนบ้างนะ 🌴",
+    "insights.rec.lateNight": "กิจกรรมส่วนใหญ่อยู่ช่วงดึก ลองปรับเวลานอนให้เร็วขึ้นเพื่อสุขภาพที่ดี 🌙",
+    "insights.rec.diversify": "ลองเพิ่มกิจกรรมที่หลากหลายขึ้น เช่น ออกกำลังกาย หรือเจอเพื่อน 🎯",
+    "insights.rec.quietest": "วัน{day} ว่างที่สุด — เหมาะจะเพิ่มกิจกรรมพัฒนาตัวเอง ✨",
   },
 } as const;
 
