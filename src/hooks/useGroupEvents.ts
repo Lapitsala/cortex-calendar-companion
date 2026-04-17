@@ -178,8 +178,7 @@ export const useGroupEvents = () => {
       }
     }
 
-    const label = response === "accepted" ? "ตกลง" : response === "declined" ? "ไม่ตกลง" : "ไม่แน่ใจ";
-    toast.success(`Responded: ${label}`);
+    toast.success(`Responded: ${response}`);
   };
 
   const deleteGroupEvent = async (eventId: string) => {

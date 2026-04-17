@@ -4,6 +4,7 @@ import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle } from "lucide-rea
 import { toast } from "sonner";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useClassroomData } from "@/hooks/useClassroomData";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 const statusConfig = {
   upcoming: { label: "Upcoming", color: "text-muted-foreground", bg: "bg-secondary", icon: Clock },
@@ -19,6 +20,7 @@ const ClassroomPage = () => {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const { courses, assignments, hasData, loading, markSynced } = useClassroomData();
   const { createEvent } = useCalendarEvents();
+  const { t } = useTranslation();
   const autoSyncDone = useRef(false);
 
   const REMINDER_PREFIX = "⏰ ";
