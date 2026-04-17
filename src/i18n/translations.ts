@@ -117,6 +117,24 @@ export const translations = {
     "classroom.import.col.dueDate": "due date (YYYY-MM-DD)",
     "classroom.import.importing": "Importing...",
     "classroom.import.pickFile": "Choose Excel file",
+
+    // Insights
+    "insights.title": "Insights",
+    "insights.subtitle": "Your lifestyle analytics",
+    "insights.previewBanner": "Preview mode — showing sample data",
+    "insights.shareSuccess": "Image saved!",
+    "insights.shareFailed": "Could not save image",
+    "insights.lifestyle.empty": "No activities in this period yet. Add an event to see your insights.",
+    "insights.lifestyle.work": "You're a Workaholic! Most of your life revolves around work. Busiest day: {day}",
+    "insights.lifestyle.study": "You're a dedicated Learner! You love growing yourself. Peak hour: {hour}",
+    "insights.lifestyle.health": "You're Healthy-focused! Great care of yourself 💪",
+    "insights.lifestyle.social": "You're a Social Butterfly! You love spending time with people",
+    "insights.lifestyle.balance": "You have a balanced lifestyle with {n} diverse activities",
+    "insights.rec.start": "Start planning your day — add your first event!",
+    "insights.rec.weekend": "You're busy on weekends. Try to schedule some rest 🌴",
+    "insights.rec.lateNight": "Most activities are late at night. Try sleeping earlier for better health 🌙",
+    "insights.rec.diversify": "Try adding more varied activities like exercise or seeing friends 🎯",
+    "insights.rec.quietest": "{day} is your quietest day — good time for self-improvement ✨",
   },
   th: {
     // Common
