@@ -421,7 +421,7 @@ const InsightsPage = () => {
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
         >
           <Download className="w-4 h-4" />
-          บันทึกรูปเพื่อแชร์
+          {t("common.export")}
         </motion.button>
       </div>
     </div>
