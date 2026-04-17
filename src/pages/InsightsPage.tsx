@@ -364,7 +364,7 @@ const InsightsPage = () => {
                     <span className="text-xs font-medium text-muted-foreground">{c.value}</span>
                   </div>
                 )) : (
-                  <p className="text-xs text-muted-foreground">ยังไม่มีข้อมูล</p>
+                  <p className="text-xs text-muted-foreground">{t("insights.lifestyle.empty")}</p>
                 )}
               </div>
             </div>
