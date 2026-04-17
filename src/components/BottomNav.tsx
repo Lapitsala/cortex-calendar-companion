@@ -1,20 +1,23 @@
 import { MessageSquare, Calendar, Users, Share2, Settings, BookOpen, ListChecks } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "@/i18n/LanguageProvider";
+import { TranslationKey } from "@/i18n/translations";
 
-const tabs = [
-  { path: "/", icon: Calendar, label: "Calendar" },
-  { path: "/chat", icon: MessageSquare, label: "Chat" },
-  { path: "/groups", icon: Users, label: "Groups" },
-  { path: "/sharing", icon: Share2, label: "Sharing" },
-  { path: "/want-to-do", icon: ListChecks, label: "Want to do" },
-  { path: "/classroom", icon: BookOpen, label: "Class" },
-  { path: "/settings", icon: Settings, label: "Settings" },
+const tabs: { path: string; icon: typeof Calendar; labelKey: TranslationKey }[] = [
+  { path: "/", icon: Calendar, labelKey: "nav.calendar" },
+  { path: "/chat", icon: MessageSquare, labelKey: "nav.chat" },
+  { path: "/groups", icon: Users, labelKey: "nav.groups" },
+  { path: "/sharing", icon: Share2, labelKey: "nav.sharing" },
+  { path: "/want-to-do", icon: ListChecks, labelKey: "nav.wantToDo" },
+  { path: "/classroom", icon: BookOpen, labelKey: "nav.classroom" },
+  { path: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong safe-area-bottom">
@@ -44,7 +47,7 @@ const BottomNav = () => {
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </span>
             </button>
           );

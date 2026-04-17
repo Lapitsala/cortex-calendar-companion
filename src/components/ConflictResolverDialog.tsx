@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Clock, MapPin, X, Trash2, Check } from "lucide-react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
 import { priorityRank } from "@/lib/eventConflicts";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 export interface PendingEvent {
   title: string;
