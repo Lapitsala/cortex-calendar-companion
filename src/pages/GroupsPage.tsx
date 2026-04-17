@@ -12,9 +12,11 @@ import { supabase } from "@/integrations/supabase/client";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 const GroupsPage = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const {
     groups, createGroup, deleteGroup, updateGroup,
     getMembers, inviteMember, respondToInvite,
@@ -216,9 +218,9 @@ const GroupsPage = () => {
   };
 
   const getResponseLabel = (r: string) => {
-    if (r === "accepted") return "ตกลง";
-    if (r === "declined") return "ไม่ตกลง";
-    return "ไม่แน่ใจ";
+    if (r === "accepted") return t("groups.respond.accept");
+    if (r === "declined") return t("groups.respond.decline");
+    return t("groups.respond.maybe");
   };
 
   const getResponseColor = (r: string) => {
@@ -232,8 +234,8 @@ const GroupsPage = () => {
       <div className="bg-card border-b border-border px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-lg font-bold text-foreground">Groups</h1>
-            <p className="text-xs text-muted-foreground">Collaborate and schedule together</p>
+            <h1 className="font-display text-lg font-bold text-foreground">{t("groups.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("groups.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -242,7 +244,7 @@ const GroupsPage = () => {
         {/* Pending invites */}
         {pendingInvites.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Pending Invites</h2>
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t("groups.pendingInvites")}</h2>
             {pendingInvites.map(inv => {
               const group = groups.find(g => g.id === inv.group_id);
               return (
@@ -457,7 +459,7 @@ const GroupsPage = () => {
                                     myResponse?.response === "accepted" ? "bg-success text-white" : "bg-success/10 text-success"
                                   }`}
                                 >
-                                  <Check className="w-3.5 h-3.5" /> ตกลง
+                                  <Check className="w-3.5 h-3.5" /> {t("groups.respond.accept")}
                                 </button>
                                 <button
                                   onClick={() => handleRespond(ev.id, "declined")}
@@ -465,7 +467,7 @@ const GroupsPage = () => {
                                     myResponse?.response === "declined" ? "bg-destructive text-white" : "bg-destructive/10 text-destructive"
                                   }`}
                                 >
-                                  <XCircle className="w-3.5 h-3.5" /> ไม่ตกลง
+                                  <XCircle className="w-3.5 h-3.5" /> {t("groups.respond.decline")}
                                 </button>
                                 <button
                                   onClick={() => handleRespond(ev.id, "maybe")}
@@ -473,14 +475,14 @@ const GroupsPage = () => {
                                     myResponse?.response === "maybe" ? "bg-warning text-white" : "bg-warning/10 text-warning"
                                   }`}
                                 >
-                                  <HelpCircle className="w-3.5 h-3.5" /> ไม่แน่ใจ
+                                  <HelpCircle className="w-3.5 h-3.5" /> {t("groups.respond.maybe")}
                                 </button>
                               </div>
 
                               {/* Response status */}
                               {responses.length > 0 && (
                                 <div className="space-y-1.5">
-                                  <h6 className="text-[11px] font-semibold text-muted-foreground">สถานะการตอบรับ ({responses.length})</h6>
+                                  <h6 className="text-[11px] font-semibold text-muted-foreground">{t("groups.responseStatus", { n: responses.length })}</h6>
                                   {accepted.length > 0 && (
                                     <div className="flex flex-wrap gap-1">
                                       {accepted.map(r => (
