@@ -15,6 +15,7 @@ export interface CalendarEvent {
   user_id: string | null;
   created_at: string;
   updated_at: string;
+  stack_order?: number | null;
 }
 
 const LOCAL_KEY = "preview_calendar_events";

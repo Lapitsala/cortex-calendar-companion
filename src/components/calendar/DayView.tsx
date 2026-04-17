@@ -148,7 +148,11 @@ const DayView = ({ selectedDate, events, onEventTap }: DayViewProps) => {
                       }}
                     >
                       <div className="flex items-center gap-1.5">
-                        {reminder ? (
+                        {event.stack_order ? (
+                          <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                            {event.stack_order}
+                          </span>
+                        ) : reminder ? (
                           <Bell className="w-3 h-3 text-primary flex-shrink-0" />
                         ) : (
                           <div

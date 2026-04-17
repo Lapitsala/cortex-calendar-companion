@@ -23,6 +23,7 @@ export type Database = {
           id: string
           location: string | null
           priority: string
+          stack_order: number | null
           start_time: string
           title: string
           updated_at: string
@@ -36,6 +37,7 @@ export type Database = {
           id?: string
           location?: string | null
           priority?: string
+          stack_order?: number | null
           start_time: string
           title: string
           updated_at?: string
@@ -49,6 +51,7 @@ export type Database = {
           id?: string
           location?: string | null
           priority?: string
+          stack_order?: number | null
           start_time?: string
           title?: string
           updated_at?: string
