@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Course, Assignment, useClassroomData } from "@/hooks/useClassroomData";
+import { Course, Assignment } from "@/hooks/useClassroomData";
+import { useTranslation } from "@/i18n/LanguageProvider";
 import * as XLSX from "xlsx";
 
 interface ClassroomImportModalProps {
@@ -26,6 +27,7 @@ const ClassroomImportModal = ({ open, onClose, onImport }: ClassroomImportModalP
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const handleFile = async (file: File) => {
     setParsing(true);
@@ -50,7 +52,7 @@ const ClassroomImportModal = ({ open, onClose, onImport }: ClassroomImportModalP
       }
 
       if (rows.length === 0) {
-        setError("ไม่พบข้อมูลในไฟล์ Excel");
+        setError(t("classroom.import.noData"));
         setParsing(false);
         return;
       }
@@ -106,11 +108,11 @@ const ClassroomImportModal = ({ open, onClose, onImport }: ClassroomImportModalP
 
       const courses = Array.from(courseMap.values());
       onImport(courses, assignments);
-      toast.success(`นำเข้า ${courses.length} วิชา, ${assignments.length} งานสำเร็จ`);
+      toast.success(t("classroom.import.success", { courses: courses.length, assignments: assignments.length }));
       onClose();
     } catch (e) {
       console.error(e);
-      setError("ไม่สามารถอ่านไฟล์ Excel ได้ กรุณาตรวจสอบรูปแบบไฟล์");
+      setError(t("classroom.import.parseError"));
     } finally {
       setParsing(false);
     }
@@ -142,23 +144,23 @@ const ClassroomImportModal = ({ open, onClose, onImport }: ClassroomImportModalP
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-primary" />
-              <h3 className="font-display text-lg font-bold text-foreground">Import Classroom</h3>
+              <h3 className="font-display text-lg font-bold text-foreground">{t("settings.importClassroom")}</h3>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+            <button onClick={onClose} aria-label={t("common.close")} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
 
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              อัปโหลดไฟล์ Excel (.xlsx) ที่มี columns ต่อไปนี้:
+              {t("classroom.import.uploadHint")}
             </p>
             <div className="bg-secondary rounded-xl p-3 text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">Columns ที่ต้องมี:</p>
-              <p><span className="text-primary font-medium">course_name</span> — ชื่อวิชา</p>
-              <p><span className="text-primary font-medium">title</span> — ชื่องาน</p>
-              <p><span className="text-primary font-medium">due_date</span> — วันส่ง (YYYY-MM-DD)</p>
-              <p className="font-medium text-foreground mt-2">Columns เพิ่มเติม (ไม่บังคับ):</p>
+              <p className="font-medium text-foreground">{t("classroom.import.requiredColumns")}</p>
+              <p><span className="text-primary font-medium">course_name</span> — {t("classroom.import.col.courseName")}</p>
+              <p><span className="text-primary font-medium">title</span> — {t("classroom.import.col.title")}</p>
+              <p><span className="text-primary font-medium">due_date</span> — {t("classroom.import.col.dueDate")}</p>
+              <p className="font-medium text-foreground mt-2">{t("classroom.import.optionalColumns")}</p>
               <p>section, teacher, due_time, points, status, description</p>
             </div>
 
@@ -183,7 +185,7 @@ const ClassroomImportModal = ({ open, onClose, onImport }: ClassroomImportModalP
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
             >
               <Upload className="w-4 h-4" />
-              {parsing ? "กำลังนำเข้า..." : "เลือกไฟล์ Excel"}
+              {parsing ? t("classroom.import.importing") : t("classroom.import.pickFile")}
             </button>
           </div>
         </motion.div>

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Clock, MapPin, X, Trash2, Check } from "lucide-react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
 import { priorityRank } from "@/lib/eventConflicts";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 export interface PendingEvent {
   title: string;
@@ -56,6 +57,7 @@ const ConflictResolverDialog = ({
   onCancel,
   onResolve,
 }: ConflictResolverDialogProps) => {
+  const { t } = useTranslation();
   const items: CardItem[] = useMemo(() => {
     if (!newEvent) return [];
     const list: CardItem[] = [
@@ -179,9 +181,9 @@ const ConflictResolverDialog = ({
                   <AlertTriangle className="w-4.5 h-4.5 text-warning" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-foreground">Time conflict detected</h3>
+                  <h3 className="font-display text-base font-bold text-foreground">{t("conflict.title")}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    เลือกลำดับที่ต้องการทำ (1 = สำคัญที่สุด) หรือลบอันที่ไม่ต้องการ
+                    {t("conflict.subtitle")}
                   </p>
                 </div>
               </div>
@@ -225,7 +227,7 @@ const ConflictResolverDialog = ({
                             {item.title}
                           </h4>
                           {item.isNew && (
-                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">NEW</span>
+                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{t("conflict.new")}</span>
                           )}
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${priorityBadge[item.priority]}`}>
                             {item.priority}
@@ -254,7 +256,7 @@ const ConflictResolverDialog = ({
                               ? "bg-destructive text-destructive-foreground"
                               : "bg-background border border-border text-muted-foreground hover:text-destructive hover:border-destructive"
                           }`}
-                          aria-label="Delete this event"
+                          aria-label={t("conflict.deleteAria")}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -266,7 +268,7 @@ const ConflictResolverDialog = ({
             </div>
 
             <div className="text-[11px] text-muted-foreground bg-secondary/40 rounded-lg p-2.5 leading-relaxed">
-              <strong className="text-foreground">เคล็ดลับ:</strong> กดวงกลมหมายเลขเพื่อจัดลำดับความสำคัญ (1, 2, 3...) — อันที่ไม่ได้เลือกจะคงอยู่ในปฏิทินตามเดิม. กดถังขยะเพื่อลบอีเวนต์เดิม.
+              <strong className="text-foreground">{t("common.tip")}:</strong> {t("conflict.tip")}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -274,7 +276,7 @@ const ConflictResolverDialog = ({
                 onClick={onCancel}
                 className="py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98]"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirm}
@@ -282,7 +284,7 @@ const ConflictResolverDialog = ({
                 className="py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Check className="w-4 h-4" />
-                Confirm
+                {t("common.confirm")}
               </button>
             </div>
           </motion.div>

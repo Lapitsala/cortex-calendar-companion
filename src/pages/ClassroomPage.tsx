@@ -4,6 +4,7 @@ import { BookOpen, Calendar, Clock, CheckCircle2, AlertCircle } from "lucide-rea
 import { toast } from "sonner";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useClassroomData } from "@/hooks/useClassroomData";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 const statusConfig = {
   upcoming: { label: "Upcoming", color: "text-muted-foreground", bg: "bg-secondary", icon: Clock },
@@ -19,6 +20,7 @@ const ClassroomPage = () => {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const { courses, assignments, hasData, loading, markSynced } = useClassroomData();
   const { createEvent } = useCalendarEvents();
+  const { t } = useTranslation();
   const autoSyncDone = useRef(false);
 
   const REMINDER_PREFIX = "⏰ ";
@@ -95,9 +97,10 @@ const ClassroomPage = () => {
         <div className="flex-1 flex items-center justify-center px-6">
           <div className="text-center space-y-3">
             <BookOpen className="w-12 h-12 text-muted-foreground/40 mx-auto" />
-            <h3 className="text-base font-semibold text-foreground">ยังไม่มีข้อมูล Classroom</h3>
+            <h3 className="text-base font-semibold text-foreground">{t("classroom.empty.title")}</h3>
             <p className="text-sm text-muted-foreground">
-              ไปที่ <span className="text-primary font-medium">Settings → Import Classroom</span> เพื่อนำเข้าข้อมูลจากไฟล์ Excel
+              {t("classroom.empty.hint", { nav: "" })}
+              <span className="text-primary font-medium">{t("nav.settings")} → {t("settings.importClassroom")}</span>
             </p>
           </div>
         </div>

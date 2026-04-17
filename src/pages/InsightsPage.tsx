@@ -10,6 +10,7 @@ import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const COLORS = [
@@ -24,6 +25,7 @@ const InsightsPage = () => {
   const navigate = useNavigate();
   const { events } = useCalendarEvents();
   const { isPreviewMode } = useAuth();
+  const { t } = useTranslation();
   const shareRef = useRef<HTMLDivElement>(null);
 
   const now = new Date();
@@ -102,31 +104,30 @@ const InsightsPage = () => {
     // Lifestyle insight
     let lifestyleInsight = "";
     if (periodEvents.length === 0) {
-      lifestyleInsight = "ยังไม่มีกิจกรรมในช่วงนี้ ลองเพิ่ม event เพื่อดู insight ของคุณ";
+      lifestyleInsight = t("insights.lifestyle.empty");
     } else if (topCategory === "Work") {
-      lifestyleInsight = `คุณเป็นคน Workaholic! ชีวิตส่วนใหญ่หมุนรอบงาน วันที่ยุ่งที่สุดคือ ${dayNames[busiestDayIdx]}`;
+      lifestyleInsight = t("insights.lifestyle.work", { day: dayNames[busiestDayIdx] });
     } else if (topCategory === "Study") {
-      lifestyleInsight = `คุณเป็น Learner ตัวยง! ชอบเรียนรู้และพัฒนาตัวเอง Peak hour คือ ${peakHour.hour}`;
+      lifestyleInsight = t("insights.lifestyle.study", { hour: peakHour.hour });
     } else if (topCategory === "Health") {
-      lifestyleInsight = `คุณเป็นสาย Healthy! ใส่ใจสุขภาพเป็นพิเศษ ดีมากเลย 💪`;
+      lifestyleInsight = t("insights.lifestyle.health");
     } else if (topCategory === "Social") {
-      lifestyleInsight = `คุณเป็นคน Social Butterfly! ชอบเจอเพื่อนและใช้เวลากับคนรอบข้าง`;
+      lifestyleInsight = t("insights.lifestyle.social");
     } else {
-      lifestyleInsight = `คุณมีไลฟ์สไตล์ที่ Balance ดี มีกิจกรรมหลากหลาย ${periodEvents.length} กิจกรรม`;
+      lifestyleInsight = t("insights.lifestyle.balance", { n: periodEvents.length });
     }
 
-    // Recommendation
     let recommendation = "";
     if (periodEvents.length === 0) {
-      recommendation = "เริ่มวางแผนวันของคุณ — เพิ่ม event แรกในปฏิทินเลย!";
+      recommendation = t("insights.rec.start");
     } else if (dayOfWeekCount[0] + dayOfWeekCount[6] > dayOfWeekCount.slice(1, 6).reduce((a, b) => a + b, 0) / 5 * 2) {
-      recommendation = "คุณยุ่งวันหยุดมาก ลองจัดสรรเวลาพักผ่อนบ้างนะ 🌴";
+      recommendation = t("insights.rec.weekend");
     } else if (Number(peakHour.hour.split(":")[0]) >= 20) {
-      recommendation = "กิจกรรมส่วนใหญ่อยู่ช่วงดึก ลองปรับเวลานอนให้เร็วขึ้นเพื่อสุขภาพที่ดี 🌙";
+      recommendation = t("insights.rec.lateNight");
     } else if (categoryCount.size <= 1) {
-      recommendation = "ลองเพิ่มกิจกรรมที่หลากหลายขึ้น เช่น ออกกำลังกาย หรือเจอเพื่อน 🎯";
+      recommendation = t("insights.rec.diversify");
     } else {
-      recommendation = `วัน${dayNames[quietestDayIdx]} ว่างที่สุด — เหมาะจะเพิ่มกิจกรรมพัฒนาตัวเอง ✨`;
+      recommendation = t("insights.rec.quietest", { day: dayNames[quietestDayIdx] });
     }
 
     return {
@@ -170,9 +171,9 @@ const InsightsPage = () => {
       a.download = `insights-${view === "month" ? MONTHS[selectedMonth] : selectedYear}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("บันทึกรูปสำเร็จ!");
+      toast.success(t("insights.shareSuccess"));
     } catch {
-      toast.error("ไม่สามารถบันทึกรูปได้");
+      toast.error(t("insights.shareFailed"));
     }
   }, [view, selectedMonth, selectedYear]);
 
@@ -188,8 +189,8 @@ const InsightsPage = () => {
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <div className="flex-1">
-          <h1 className="font-display text-lg font-bold text-foreground">Insights</h1>
-          <p className="text-xs text-muted-foreground">Your lifestyle analytics</p>
+          <h1 className="font-display text-lg font-bold text-foreground">{t("insights.title")}</h1>
+          <p className="text-xs text-muted-foreground">{t("insights.subtitle")}</p>
         </div>
         <button onClick={handleShare} className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-95">
           <Share2 className="w-4 h-4 text-primary" />
@@ -199,7 +200,7 @@ const InsightsPage = () => {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {isPreviewMode && (
           <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 text-xs text-foreground">
-            Preview mode — ใช้ข้อมูลตัวอย่างเพื่อแสดงผล
+            {t("insights.previewBanner")}
           </div>
         )}
 
@@ -363,7 +364,7 @@ const InsightsPage = () => {
                     <span className="text-xs font-medium text-muted-foreground">{c.value}</span>
                   </div>
                 )) : (
-                  <p className="text-xs text-muted-foreground">ยังไม่มีข้อมูล</p>
+                  <p className="text-xs text-muted-foreground">{t("insights.lifestyle.empty")}</p>
                 )}
               </div>
             </div>
@@ -420,7 +421,7 @@ const InsightsPage = () => {
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
         >
           <Download className="w-4 h-4" />
-          บันทึกรูปเพื่อแชร์
+          {t("common.export")}
         </motion.button>
       </div>
     </div>
