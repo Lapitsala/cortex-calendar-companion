@@ -21,6 +21,14 @@ export const translations = {
     "common.export": "Export",
     "common.search": "Search",
 
+    // Chat history
+    "chat.history": "Chat History",
+    "chat.newChat": "New Chat",
+    "chat.searchPlaceholder": "Search chats and messages...",
+    "chat.noResults": "No matches found",
+    "chat.noHistory": "No chat history yet",
+    "chat.matchInMessage": "Match in message",
+
     // Nav
     "nav.calendar": "Calendar",
     "nav.chat": "Chat",
@@ -155,6 +163,14 @@ export const translations = {
     "common.import": "นำเข้า",
     "common.export": "ส่งออก",
     "common.search": "ค้นหา",
+
+    // Chat history
+    "chat.history": "ประวัติแชท",
+    "chat.newChat": "แชทใหม่",
+    "chat.searchPlaceholder": "ค้นหาแชทและข้อความ...",
+    "chat.noResults": "ไม่พบผลลัพธ์",
+    "chat.noHistory": "ยังไม่มีประวัติแชท",
+    "chat.matchInMessage": "พบในข้อความ",
 
     // Nav
     "nav.calendar": "ปฏิทิน",
