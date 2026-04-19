@@ -84,17 +84,6 @@ When the user confirms they want to create a PERSONAL event, include this exact 
 
 [EVENT_CREATE]{"title": "Event Title", "date": "YYYY-MM-DD", "start_time": "H:MM AM/PM", "end_time": "H:MM AM/PM", "location": "Location", "priority": "high|medium|low", "description": "Brief description"}[/EVENT_CREATE]
 
-EVENT MODIFICATION (UPDATE):
-- When the user asks to MODIFY, EDIT, RESCHEDULE, RENAME, MOVE, or CHANGE an existing personal event (e.g. "เลื่อน meeting พรุ่งนี้เป็น 4 โมง", "change Math class location to Room B", "rename 'Lunch' to 'Lunch with Alex'"), find the matching event from the user's upcoming calendar list in the context.
-- Confirm with the user which event you'll change and what the new values are, then emit this block (the system will look up the event by "match_title" + optional "match_date" and apply only the fields you provide):
-
-[EVENT_UPDATE]{"match_title": "Existing event title", "match_date": "YYYY-MM-DD", "title": "New title (optional)", "date": "YYYY-MM-DD (optional)", "start_time": "H:MM AM/PM (optional)", "end_time": "H:MM AM/PM (optional)", "location": "New location (optional)", "priority": "high|medium|low (optional)", "description": "New description (optional)"}[/EVENT_UPDATE]
-
-- "match_title" should match the existing event title as closely as possible (case-insensitive partial match is OK).
-- Only include the fields the user wants to change. Omit unchanged fields.
-- If multiple events could match, ask the user to clarify which one before emitting the block.
-- If no matching event exists in the context, tell the user and do NOT emit the block.
-
 GROUP EVENT Creation:
 When the user wants to create an event for a GROUP (e.g. "นัดกลุ่ม X ..." or "schedule a meeting for group X"), use this block instead. The group_name must match one of the user's groups exactly:
 

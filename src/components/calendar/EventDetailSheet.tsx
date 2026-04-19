@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Clock, MapPin, MessageSquare, Trash2, Flag, Bell, Pencil } from "lucide-react";
+import { X, Clock, MapPin, MessageSquare, Trash2, Flag, Bell } from "lucide-react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useNavigate } from "react-router-dom";
-import EventEditModal from "@/components/EventEditModal";
 
 const isReminder = (event: CalendarEvent) => event.title.startsWith("⏰");
 const priorityLabels: Record<string, { label: string; class: string }> = {
@@ -20,7 +18,6 @@ interface EventDetailSheetProps {
 
 const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) => {
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
 
   if (!event) return null;
 
@@ -91,19 +88,11 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
                 }}
                 className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
               >
-                <MessageSquare className="w-4 h-4" /> Chat
-              </button>
-              <button
-                onClick={() => setEditing(true)}
-                className="py-3 px-4 rounded-xl bg-secondary text-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-                aria-label="Edit event"
-              >
-                <Pencil className="w-4 h-4" />
+                <MessageSquare className="w-4 h-4" /> Chat about this
               </button>
               <button
                 onClick={() => onDelete(event.id)}
                 className="py-3 px-4 rounded-xl bg-destructive/10 text-destructive font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-                aria-label="Delete event"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -111,12 +100,6 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
           </motion.div>
         </motion.div>
       )}
-      <EventEditModal
-        open={editing}
-        event={event}
-        onClose={() => setEditing(false)}
-        onSaved={onClose}
-      />
     </AnimatePresence>
   );
 };
