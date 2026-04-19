@@ -238,5 +238,38 @@ export const useChatSessions = () => {
     }
   };
 
-  return { sessions, loading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions, refetch: fetchSessions };
+  const searchMessages = useCallback(async (query: string): Promise<Map<string, string>> => {
+    const trimmed = query.trim();
+    const results = new Map<string, string>();
+    if (!trimmed) return results;
+
+    const sessionIds = sessions.map((s) => s.id);
+    if (sessionIds.length === 0) return results;
+
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select("session_id, content, created_at")
+      .in("session_id", sessionIds)
+      .ilike("content", `%${trimmed}%`)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to search messages:", error);
+      return results;
+    }
+
+    for (const row of (data || []) as { session_id: string; content: string }[]) {
+      if (!results.has(row.session_id)) {
+        const content = row.content;
+        const idx = content.toLowerCase().indexOf(trimmed.toLowerCase());
+        const start = Math.max(0, idx - 20);
+        const end = Math.min(content.length, idx + trimmed.length + 40);
+        const snippet = (start > 0 ? "…" : "") + content.slice(start, end) + (end < content.length ? "…" : "");
+        results.set(row.session_id, snippet);
+      }
+    }
+    return results;
+  }, [sessions]);
+
+  return { sessions, loading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions, searchMessages, refetch: fetchSessions };
 };

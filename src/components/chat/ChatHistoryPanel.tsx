@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Trash2, Plus, Archive, CheckSquare, Square, CheckCheck } from "lucide-react";
+import { X, Trash2, Plus, Archive, CheckSquare, Square, CheckCheck, Search } from "lucide-react";
 import { ChatSession } from "@/hooks/useChatSessions";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 interface ChatHistoryPanelProps {
   open: boolean;
@@ -14,16 +15,55 @@ interface ChatHistoryPanelProps {
   onArchiveSession: (id: string) => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkArchive?: (ids: string[]) => void;
+  onSearchMessages?: (query: string) => Promise<Map<string, string>>;
 }
 
 const ChatHistoryPanel = ({
   open, onClose, sessions, activeSessionId,
   onSelectSession, onNewChat, onDeleteSession, onArchiveSession,
-  onBulkDelete, onBulkArchive,
+  onBulkDelete, onBulkArchive, onSearchMessages,
 }: ChatHistoryPanelProps) => {
+  const { t } = useTranslation();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [messageMatches, setMessageMatches] = useState<Map<string, string>>(new Map());
+
+  // Debounced message search
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || !onSearchMessages) {
+      setMessageMatches(new Map());
+      return;
+    }
+    const handle = setTimeout(async () => {
+      const results = await onSearchMessages(q);
+      setMessageMatches(results);
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [searchQuery, onSearchMessages]);
+
+  const filteredSessions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return sessions;
+    return sessions.filter(s =>
+      s.title.toLowerCase().includes(q) || messageMatches.has(s.id)
+    );
+  }, [sessions, searchQuery, messageMatches]);
+
+  const highlight = (text: string, q: string) => {
+    if (!q) return text;
+    const idx = text.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return text;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-primary/30 text-foreground rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>
+        {text.slice(idx + q.length)}
+      </>
+    );
+  };
 
   const statusIcon = (status: string) => {
     if (status === "completed") return "✅";
@@ -41,10 +81,10 @@ const ChatHistoryPanel = ({
   };
 
   const selectAll = () => {
-    if (selected.size === sessions.length) {
+    if (selected.size === filteredSessions.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(sessions.map(s => s.id)));
+      setSelected(new Set(filteredSessions.map(s => s.id)));
     }
   };
 
@@ -81,8 +121,11 @@ const ChatHistoryPanel = ({
 
   const handleClose = () => {
     exitSelectMode();
+    setSearchQuery("");
     onClose();
   };
+
+  const trimmedQuery = searchQuery.trim();
 
   return (
     <AnimatePresence>
@@ -104,7 +147,7 @@ const ChatHistoryPanel = ({
           >
             <div className="p-4 border-b border-border flex items-center justify-between">
               <h2 className="font-display text-base font-bold text-foreground">
-                {selectMode ? `${selected.size} selected` : "Chat History"}
+                {selectMode ? `${selected.size} selected` : t("chat.history")}
               </h2>
               <div className="flex items-center gap-1">
                 {sessions.length > 0 && (
@@ -121,6 +164,30 @@ const ChatHistoryPanel = ({
               </div>
             </div>
 
+            {/* Search bar */}
+            {sessions.length > 0 && (
+              <div className="px-4 pt-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={t("chat.searchPlaceholder")}
+                    className="w-full h-9 pl-9 pr-9 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground border border-transparent focus:border-primary focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Bulk actions bar */}
             {selectMode && selected.size > 0 && (
               <div className="px-4 py-2 border-b border-border flex items-center gap-2">
@@ -129,7 +196,7 @@ const ChatHistoryPanel = ({
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-xs font-medium text-foreground active:scale-95"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  {selected.size === sessions.length ? "Deselect All" : "Select All"}
+                  {selected.size === filteredSessions.length ? "Deselect All" : "Select All"}
                 </button>
                 <div className="flex-1" />
                 <button
@@ -152,15 +219,20 @@ const ChatHistoryPanel = ({
                 onClick={onNewChat}
                 className="mx-4 mt-3 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
               >
-                <Plus className="w-4 h-4" /> New Chat
+                <Plus className="w-4 h-4" /> {t("chat.newChat")}
               </button>
             )}
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {sessions.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground py-8">No chat history yet</p>
+                <p className="text-center text-sm text-muted-foreground py-8">{t("chat.noHistory")}</p>
               )}
-              {sessions.map(session => (
+              {sessions.length > 0 && filteredSessions.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-8">{t("chat.noResults")}</p>
+              )}
+              {filteredSessions.map(session => {
+                const messageSnippet = messageMatches.get(session.id);
+                return (
                 <div
                   key={session.id}
                   className={`rounded-xl border p-3 transition-all ${
@@ -188,10 +260,19 @@ const ChatHistoryPanel = ({
                         <span className="text-sm">{statusIcon(session.status)}</span>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{session.title}</p>
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {highlight(session.title, trimmedQuery)}
+                        </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           {new Date(session.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                         </p>
+                        {messageSnippet && (
+                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 italic">
+                            <span className="text-primary not-italic font-medium">“</span>
+                            {highlight(messageSnippet, trimmedQuery)}
+                            <span className="text-primary not-italic font-medium">”</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -214,7 +295,8 @@ const ChatHistoryPanel = ({
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Bulk delete confirmation */}

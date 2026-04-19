@@ -42,7 +42,7 @@ const ChatPage = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
-  const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions } = useChatSessions();
+  const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions, searchMessages } = useChatSessions();
   const { events, createEvent } = useCalendarEvents();
   const { attemptCreateEvent, conflictDialogProps } = useEventConflictCheck();
   const { groups, getMembers } = useGroups();
@@ -592,6 +592,7 @@ const ChatPage = () => {
         onDeleteSession={(id) => setDeleteSessionTarget(id)}
         onArchiveSession={(id) => updateSession(id, { status: "archived" })}
         onBulkDelete={handleBulkDelete} onBulkArchive={handleBulkArchive}
+        onSearchMessages={searchMessages}
       />
 
       <DeleteConfirmDialog
