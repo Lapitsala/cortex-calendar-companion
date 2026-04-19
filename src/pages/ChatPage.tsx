@@ -78,13 +78,19 @@ const ChatPage = () => {
     }
   }, [initialized, searchParams]);
 
-  // Handle "Chat about this event" from calendar
+  // Handle "Chat about this event" from calendar — always start a fresh chat
   useEffect(() => {
     const eventName = searchParams.get("event");
     if (eventName && initialized) {
-      handleSend(`Tell me about my event "${eventName}"`);
+      (async () => {
+        setActiveSessionId(null);
+        setMessages([welcomeMessage]);
+        // clear param so it doesn't re-trigger
+        window.history.replaceState({}, document.title, window.location.pathname);
+        await handleSend(`Tell me about my event "${eventName}"`);
+      })();
     }
-  }, [initialized]);
+  }, [initialized, searchParams]);
 
   // Initialize once when sessions finish loading
   useEffect(() => {
