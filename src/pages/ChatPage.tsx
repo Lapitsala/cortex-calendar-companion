@@ -43,7 +43,7 @@ const ChatPage = () => {
   const location = useLocation();
 
   const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession, getMessages, addMessage, cleanupEmptySessions, searchMessages } = useChatSessions();
-  const { events, createEvent } = useCalendarEvents();
+  const { events, createEvent, updateEvent } = useCalendarEvents();
   const { attemptCreateEvent, conflictDialogProps } = useEventConflictCheck();
   const { groups, getMembers } = useGroups();
   const { sharedWithMe } = useCalendarShares();
@@ -153,6 +153,52 @@ const ChatPage = () => {
       } catch (e) {
         console.error("Failed to auto-create event:", e);
         toast.error("Failed to create event from AI response");
+      }
+    }
+
+    // Personal event UPDATE
+    const updateRegex = /\[EVENT_UPDATE\]([\s\S]*?)\[\/EVENT_UPDATE\]/g;
+    let updateMatch;
+    while ((updateMatch = updateRegex.exec(text)) !== null) {
+      try {
+        const data = JSON.parse(updateMatch[1]);
+        const matchTitle = (data.match_title || "").toString().trim().toLowerCase();
+        const matchDate = (data.match_date || "").toString().trim();
+        if (!matchTitle) {
+          toast.error("AI did not specify which event to update");
+          continue;
+        }
+        const candidates = events.filter(e => {
+          const titleHit = e.title.toLowerCase().includes(matchTitle) || matchTitle.includes(e.title.toLowerCase());
+          const dateHit = matchDate ? e.event_date === matchDate : true;
+          return titleHit && dateHit;
+        });
+        if (candidates.length === 0) {
+          toast.error(`Couldn't find an event matching "${data.match_title}"`);
+          continue;
+        }
+        if (candidates.length > 1) {
+          toast.error(`Multiple events match "${data.match_title}" — please be more specific`);
+          continue;
+        }
+        const target = candidates[0];
+        const updates: Record<string, unknown> = {};
+        if (data.title) updates.title = data.title;
+        if (data.date) updates.event_date = data.date;
+        if (data.start_time) updates.start_time = convertTime(data.start_time);
+        if (data.end_time) updates.end_time = convertTime(data.end_time);
+        if (data.location !== undefined) updates.location = data.location || null;
+        if (data.priority) updates.priority = data.priority;
+        if (data.description !== undefined) updates.description = data.description || null;
+        if (Object.keys(updates).length === 0) {
+          toast.error("No fields to update");
+          continue;
+        }
+        await updateEvent(target.id, updates);
+        toast.success(`✏️ Updated "${target.title}"`);
+      } catch (e) {
+        console.error("Failed to update event from AI:", e);
+        toast.error("Failed to update event from AI response");
       }
     }
 
