@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import CalendarImportModal from "@/components/CalendarImportModal";
 import ClassroomImportModal from "@/components/ClassroomImportModal";
-import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import ClearDataDialog, { ClearSelection } from "@/components/ClearDataDialog";
 import { Input } from "@/components/ui/input";
 import { useClassroomData } from "@/hooks/useClassroomData";
 import { useTranslation } from "@/i18n/LanguageProvider";
@@ -94,26 +94,58 @@ const SettingsPage = () => {
     }
   };
 
-  const handleClearAllData = async () => {
+  const handleClearData = async (selection: ClearSelection) => {
     if (!user) return;
     setClearing(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error(t("settings.sessionExpired")); return; }
 
-      await Promise.all([
-        supabase.from("calendar_events").delete().eq("user_id", user.id),
-        supabase.from("want_to_do").delete().eq("user_id", user.id),
-        supabase.from("chat_messages").delete().in(
-          "session_id",
-          (await supabase.from("chat_sessions").select("id").eq("user_id", user.id)).data?.map(s => s.id) || []
-        ),
-      ]);
-      await supabase.from("chat_sessions").delete().eq("user_id", user.id);
+      const tasks: Promise<unknown>[] = [];
+      const run = <T,>(b: PromiseLike<T>) => Promise.resolve(b);
 
-      await classroomData.clearAll();
+      if (selection.calendar) {
+        tasks.push(run(supabase.from("calendar_events").delete().eq("user_id", user.id)));
+      }
+      if (selection.wantToDo) {
+        tasks.push(run(supabase.from("want_to_do").delete().eq("user_id", user.id)));
+      }
+      if (selection.chat) {
+        const { data: sessions } = await supabase.from("chat_sessions").select("id").eq("user_id", user.id);
+        const ids = sessions?.map(s => s.id) || [];
+        if (ids.length > 0) {
+          await supabase.from("chat_messages").delete().in("session_id", ids);
+        }
+        tasks.push(run(supabase.from("chat_sessions").delete().eq("user_id", user.id)));
+      }
+      if (selection.sharing) {
+        tasks.push(run(supabase.from("calendar_shares").delete().eq("owner_id", user.id)));
+        tasks.push(run(supabase.from("calendar_shares").delete().eq("shared_with_id", user.id)));
+      }
+      if (selection.groups) {
+        // Remove memberships first, then delete groups created by user (cascades responses/availability via own deletion path)
+        const { data: ownGroups } = await supabase.from("groups").select("id").eq("created_by", user.id);
+        const ownIds = ownGroups?.map(g => g.id) || [];
+        if (ownIds.length > 0) {
+          await supabase.from("group_event_responses").delete().eq("user_id", user.id);
+          await supabase.from("group_availability").delete().in("group_id", ownIds);
+          await supabase.from("group_events").delete().in("group_id", ownIds);
+          await supabase.from("group_members").delete().in("group_id", ownIds);
+          tasks.push(run(supabase.from("groups").delete().in("id", ownIds)));
+        }
+        // Leave other groups
+        tasks.push(run(supabase.from("group_members").delete().eq("user_id", user.id)));
+        tasks.push(run(supabase.from("group_event_responses").delete().eq("user_id", user.id)));
+        tasks.push(run(supabase.from("group_availability").delete().eq("user_id", user.id)));
+      }
 
-      toast.success(t("settings.clearAllSuccess"));
+      await Promise.all(tasks);
+
+      if (selection.classroom) {
+        await classroomData.clearAll();
+      }
+
+      toast.success(t("clearData.partialSuccess"));
       setShowClearConfirm(false);
       window.location.reload();
     } catch (e) {
@@ -373,12 +405,11 @@ const SettingsPage = () => {
         onClose={() => setShowClassroomImport(false)}
         onImport={(courses, assignments) => classroomData.importData(courses, assignments)}
       />
-      <DeleteConfirmDialog
+      <ClearDataDialog
         open={showClearConfirm}
-        title={t("settings.clearAllConfirmTitle")}
-        message={t("settings.clearAllConfirmMessage")}
-        onConfirm={handleClearAllData}
+        onConfirm={handleClearData}
         onCancel={() => setShowClearConfirm(false)}
+        loading={clearing}
       />
     </div>
   );
