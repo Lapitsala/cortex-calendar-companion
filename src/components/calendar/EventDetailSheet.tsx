@@ -4,6 +4,7 @@ import { X, Clock, MapPin, MessageSquare, Trash2, Flag, Bell, Pencil } from "luc
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useNavigate } from "react-router-dom";
 import EventEditModal from "@/components/EventEditModal";
+import WeatherBadge from "@/components/WeatherBadge";
 
 const isReminder = (event: CalendarEvent) => event.title.startsWith("⏰");
 const priorityLabels: Record<string, { label: string; class: string }> = {
@@ -72,6 +73,14 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
                 <div className="flex items-center gap-2 text-sm text-foreground">
                   <MapPin className="w-4 h-4 text-muted-foreground" />
                   <span>{event.location}</span>
+                  <WeatherBadge
+                    location={event.location}
+                    date={event.event_date}
+                    startTime={event.start_time}
+                    showTemp
+                    showLabel
+                    className="ml-auto text-xs text-muted-foreground"
+                  />
                 </div>
               )}
               <div className="flex items-center gap-2 text-sm">

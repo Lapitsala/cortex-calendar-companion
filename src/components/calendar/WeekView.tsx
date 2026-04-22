@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, MapPin, Bell } from "lucide-react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
+import WeatherBadge from "@/components/WeatherBadge";
 
 const isReminder = (event: CalendarEvent) => event.title.startsWith("⏰");
 
@@ -171,6 +172,12 @@ const WeekView = ({ currentDate, selectedDate, onSelectDate, events, onEventTap 
                                 {event.location}
                               </span>
                             )}
+                            <WeatherBadge
+                              location={event.location}
+                              date={event.event_date}
+                              startTime={event.start_time}
+                              showTemp
+                            />
                           </div>
                           {event.description && (
                             <p className="text-xs text-muted-foreground mt-1 truncate">{event.description}</p>

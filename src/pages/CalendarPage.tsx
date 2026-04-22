@@ -10,6 +10,7 @@ import YearView from "@/components/calendar/YearView";
 import EventDetailSheet from "@/components/calendar/EventDetailSheet";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import EventCreateModal from "@/components/EventCreateModal";
+import WeatherBadge from "@/components/WeatherBadge";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -161,6 +162,13 @@ const CalendarPage = () => {
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.start_time}{event.end_time ? ` – ${event.end_time}` : ""}</span>
                             {event.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>}
+                            <WeatherBadge
+                              location={event.location}
+                              date={event.event_date}
+                              startTime={event.start_time}
+                              showTemp
+                              className="text-xs"
+                            />
                           </div>
                         </div>
                       </div>

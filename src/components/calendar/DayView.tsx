@@ -1,6 +1,7 @@
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
 import { Clock, MapPin, Bell, Layers } from "lucide-react";
 import { eventsOverlap } from "@/lib/eventConflicts";
+import WeatherBadge from "@/components/WeatherBadge";
 
 const priorityColors: Record<string, string> = {
   high: "bg-destructive",
@@ -190,6 +191,12 @@ const DayView = ({ selectedDate, events, onEventTap }: DayViewProps) => {
                               {event.location}
                             </span>
                           )}
+                          <WeatherBadge
+                            location={event.location}
+                            date={event.event_date}
+                            startTime={event.start_time}
+                            className="text-[10px]"
+                          />
                         </div>
                       )}
                     </button>
