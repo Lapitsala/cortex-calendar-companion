@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, MapPin, Bell } from "lucide-react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
+import WeatherBadge from "@/components/WeatherBadge";
 
 const isReminder = (event: CalendarEvent) => event.title.startsWith("⏰");
 
