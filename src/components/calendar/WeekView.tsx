@@ -172,6 +172,12 @@ const WeekView = ({ currentDate, selectedDate, onSelectDate, events, onEventTap 
                                 {event.location}
                               </span>
                             )}
+                            <WeatherBadge
+                              location={event.location}
+                              date={event.event_date}
+                              startTime={event.start_time}
+                              showTemp
+                            />
                           </div>
                           {event.description && (
                             <p className="text-xs text-muted-foreground mt-1 truncate">{event.description}</p>
