@@ -102,12 +102,13 @@ const SettingsPage = () => {
       if (!session) { toast.error(t("settings.sessionExpired")); return; }
 
       const tasks: Promise<unknown>[] = [];
+      const run = <T,>(b: PromiseLike<T>) => Promise.resolve(b);
 
       if (selection.calendar) {
-        tasks.push(supabase.from("calendar_events").delete().eq("user_id", user.id));
+        tasks.push(run(supabase.from("calendar_events").delete().eq("user_id", user.id)));
       }
       if (selection.wantToDo) {
-        tasks.push(supabase.from("want_to_do").delete().eq("user_id", user.id));
+        tasks.push(run(supabase.from("want_to_do").delete().eq("user_id", user.id)));
       }
       if (selection.chat) {
         const { data: sessions } = await supabase.from("chat_sessions").select("id").eq("user_id", user.id);
@@ -115,11 +116,11 @@ const SettingsPage = () => {
         if (ids.length > 0) {
           await supabase.from("chat_messages").delete().in("session_id", ids);
         }
-        tasks.push(supabase.from("chat_sessions").delete().eq("user_id", user.id));
+        tasks.push(run(supabase.from("chat_sessions").delete().eq("user_id", user.id)));
       }
       if (selection.sharing) {
-        tasks.push(supabase.from("calendar_shares").delete().eq("owner_id", user.id));
-        tasks.push(supabase.from("calendar_shares").delete().eq("shared_with_id", user.id));
+        tasks.push(run(supabase.from("calendar_shares").delete().eq("owner_id", user.id)));
+        tasks.push(run(supabase.from("calendar_shares").delete().eq("shared_with_id", user.id)));
       }
       if (selection.groups) {
         // Remove memberships first, then delete groups created by user (cascades responses/availability via own deletion path)
@@ -130,12 +131,12 @@ const SettingsPage = () => {
           await supabase.from("group_availability").delete().in("group_id", ownIds);
           await supabase.from("group_events").delete().in("group_id", ownIds);
           await supabase.from("group_members").delete().in("group_id", ownIds);
-          tasks.push(supabase.from("groups").delete().in("id", ownIds));
+          tasks.push(run(supabase.from("groups").delete().in("id", ownIds)));
         }
         // Leave other groups
-        tasks.push(supabase.from("group_members").delete().eq("user_id", user.id));
-        tasks.push(supabase.from("group_event_responses").delete().eq("user_id", user.id));
-        tasks.push(supabase.from("group_availability").delete().eq("user_id", user.id));
+        tasks.push(run(supabase.from("group_members").delete().eq("user_id", user.id)));
+        tasks.push(run(supabase.from("group_event_responses").delete().eq("user_id", user.id)));
+        tasks.push(run(supabase.from("group_availability").delete().eq("user_id", user.id)));
       }
 
       await Promise.all(tasks);
