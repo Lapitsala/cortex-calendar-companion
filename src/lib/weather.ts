@@ -1,5 +1,4 @@
 // Open-Meteo weather utilities — free, no API key required.
-// Docs: https://open-meteo.com/
 
 export interface WeatherInfo {
   emoji: string;
@@ -8,8 +7,6 @@ export interface WeatherInfo {
   code: number;
 }
 
-// WMO weather interpretation codes → emoji + label
-// https://open-meteo.com/en/docs#weathervariables
 export const wmoToWeather = (code: number, isDay = true): { emoji: string; label: string } => {
   if (code === 0) return { emoji: isDay ? "☀️" : "🌙", label: "Clear" };
   if (code === 1) return { emoji: isDay ? "🌤️" : "🌙", label: "Mostly clear" };
@@ -60,7 +57,6 @@ export const geocodeLocation = async (location: string): Promise<GeoResult | nul
   }
 };
 
-// Open-Meteo forecast covers ~16 days. Older / further dates return null.
 const isInForecastRange = (dateStr: string): boolean => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -71,10 +67,70 @@ const isInForecastRange = (dateStr: string): boolean => {
 
 const weatherCache = new Map<string, WeatherInfo | null>();
 
-/**
- * Fetch weather forecast for a given location string + date (YYYY-MM-DD) + optional hour.
- * Returns null if location can't be geocoded or date is outside forecast range.
- */
+const pickHour = (json: unknown, startTime?: string | null): WeatherInfo | null => {
+  const j = json as { hourly?: { time?: string[]; weathercode?: number[]; temperature_2m?: number[]; is_day?: number[] } };
+  const times = j?.hourly?.time || [];
+  const codes = j?.hourly?.weathercode || [];
+  const temps = j?.hourly?.temperature_2m || [];
+  const isDayArr = j?.hourly?.is_day || [];
+  if (times.length === 0) return null;
+  let targetHour = 12;
+  if (startTime) {
+    const cleaned = startTime.trim().toLowerCase();
+    const isPM = cleaned.includes("pm");
+    const isAM = cleaned.includes("am");
+    const numeric = cleaned.replace(/[ap]m/i, "").trim();
+    let h = parseInt(numeric.split(":")[0]) || 12;
+    if (isPM && h !== 12) h += 12;
+    if (isAM && h === 12) h = 0;
+    if (!isPM && !isAM && h < 6) h += 12;
+    targetHour = Math.min(23, Math.max(0, h));
+  }
+  let bestIdx = 0;
+  let bestDiff = Infinity;
+  times.forEach((t, i) => {
+    const hour = parseInt(t.split("T")[1]?.split(":")[0] ?? "0");
+    const diff = Math.abs(hour - targetHour);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  });
+  const code = codes[bestIdx];
+  const { emoji, label } = wmoToWeather(code, isDayArr[bestIdx] !== 0);
+  return {
+    emoji,
+    label,
+    tempC: typeof temps[bestIdx] === "number" ? Math.round(temps[bestIdx]) : null,
+    code,
+  };
+};
+
+export const fetchWeatherForCoords = async (
+  latitude: number,
+  longitude: number,
+  date: string,
+  startTime?: string | null,
+): Promise<WeatherInfo | null> => {
+  if (!isInForecastRange(date)) return null;
+  const cacheKey = `coords:${latitude.toFixed(2)},${longitude.toFixed(2)}|${date}|${startTime || ""}`;
+  if (weatherCache.has(cacheKey)) return weatherCache.get(cacheKey) ?? null;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=weathercode,temperature_2m,is_day&start_date=${date}&end_date=${date}&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      weatherCache.set(cacheKey, null);
+      return null;
+    }
+    const info = pickHour(await res.json(), startTime);
+    weatherCache.set(cacheKey, info);
+    return info;
+  } catch {
+    weatherCache.set(cacheKey, null);
+    return null;
+  }
+};
+
 export const fetchWeatherFor = async (
   location: string | null | undefined,
   date: string,
@@ -83,67 +139,12 @@ export const fetchWeatherFor = async (
   if (!location || !isInForecastRange(date)) return null;
   const cacheKey = `${location.toLowerCase()}|${date}|${startTime || ""}`;
   if (weatherCache.has(cacheKey)) return weatherCache.get(cacheKey) ?? null;
-
   const geo = await geocodeLocation(location);
   if (!geo) {
     weatherCache.set(cacheKey, null);
     return null;
   }
-
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&hourly=weathercode,temperature_2m,is_day&start_date=${date}&end_date=${date}&timezone=auto`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      weatherCache.set(cacheKey, null);
-      return null;
-    }
-    const json = await res.json();
-    const times: string[] = json?.hourly?.time || [];
-    const codes: number[] = json?.hourly?.weathercode || [];
-    const temps: number[] = json?.hourly?.temperature_2m || [];
-    const isDayArr: number[] = json?.hourly?.is_day || [];
-    if (times.length === 0) {
-      weatherCache.set(cacheKey, null);
-      return null;
-    }
-
-    // Pick hour closest to event start (or noon as fallback)
-    let targetHour = 12;
-    if (startTime) {
-      const cleaned = startTime.trim().toLowerCase();
-      const isPM = cleaned.includes("pm");
-      const isAM = cleaned.includes("am");
-      const numeric = cleaned.replace(/[ap]m/i, "").trim();
-      let h = parseInt(numeric.split(":")[0]) || 12;
-      if (isPM && h !== 12) h += 12;
-      if (isAM && h === 12) h = 0;
-      if (!isPM && !isAM && h < 6) h += 12;
-      targetHour = Math.min(23, Math.max(0, h));
-    }
-
-    let bestIdx = 0;
-    let bestDiff = Infinity;
-    times.forEach((t, i) => {
-      const hour = parseInt(t.split("T")[1]?.split(":")[0] ?? "0");
-      const diff = Math.abs(hour - targetHour);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestIdx = i;
-      }
-    });
-
-    const code = codes[bestIdx];
-    const { emoji, label } = wmoToWeather(code, isDayArr[bestIdx] !== 0);
-    const info: WeatherInfo = {
-      emoji,
-      label,
-      tempC: typeof temps[bestIdx] === "number" ? Math.round(temps[bestIdx]) : null,
-      code,
-    };
-    weatherCache.set(cacheKey, info);
-    return info;
-  } catch {
-    weatherCache.set(cacheKey, null);
-    return null;
-  }
+  const info = await fetchWeatherForCoords(geo.latitude, geo.longitude, date, startTime);
+  weatherCache.set(cacheKey, info);
+  return info;
 };

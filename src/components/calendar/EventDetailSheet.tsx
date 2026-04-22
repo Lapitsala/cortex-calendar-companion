@@ -30,15 +30,17 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
   const dateFormatted = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
   return (
-    <AnimatePresence>
-      {event && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-x-0 top-0 bottom-16 bg-foreground/20 backdrop-blur-sm z-[60] flex items-end"
-          onClick={onClose}
-        >
+    <>
+      <AnimatePresence>
+        {event && (
+          <motion.div
+            key="event-detail-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-x-0 top-0 bottom-16 bg-foreground/20 backdrop-blur-sm z-[60] flex items-end"
+            onClick={onClose}
+          >
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -117,16 +119,17 @@ const EventDetailSheet = ({ event, onClose, onDelete }: EventDetailSheetProps) =
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
+        )}
+      </AnimatePresence>
       <EventEditModal
         open={editing}
         event={event}
         onClose={() => setEditing(false)}
         onSaved={onClose}
       />
-    </AnimatePresence>
+    </>
   );
 };
 
