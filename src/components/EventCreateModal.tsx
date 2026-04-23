@@ -132,7 +132,7 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg max-h-full overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-3"
+              className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-card rounded-t-2xl border-t border-border p-5 space-y-5"
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">{title}</h3>
@@ -141,27 +141,44 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
                 </button>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground px-1">Title *</label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Event title *"
+                  placeholder="Event title"
                   className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 {errors.title && <p className="text-xs text-destructive px-1">{errors.title}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">Start date *</label>
                   <input
                     type="date"
                     value={form.eventDate}
-                    onChange={(e) => setForm((p) => ({ ...p, eventDate: e.target.value }))}
+                    onChange={(e) => setForm((p) => ({ ...p, eventDate: e.target.value, endDate: p.endDate < e.target.value ? e.target.value : p.endDate }))}
                     className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                   {errors.eventDate && <p className="text-xs text-destructive px-1">{errors.eventDate}</p>}
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">End date</label>
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    min={form.eventDate}
+                    onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  {errors.endDate && <p className="text-xs text-destructive px-1">{errors.endDate}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">Start time *</label>
                   <input
                     type="time"
                     value={form.startTime}
@@ -170,27 +187,31 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
                   />
                   {errors.startTime && <p className="text-xs text-destructive px-1">{errors.startTime}</p>}
                 </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">End time</label>
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  {errors.endTime && <p className="text-xs text-destructive px-1">{errors.endTime}</p>}
+                </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground px-1">Location</label>
                 <input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
-                  placeholder="End time (optional)"
-                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  value={form.location}
+                  onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                  placeholder="Optional"
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                {errors.endTime && <p className="text-xs text-destructive px-1">{errors.endTime}</p>}
               </div>
 
-              <input
-                value={form.location}
-                onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
-                placeholder="Location (optional)"
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-
-              <div className="flex gap-2">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground px-1">Priority</label>
+                <div className="flex gap-2">
                 {(["low", "medium", "high"] as const).map((p) => (
                   <button
                     key={p}
@@ -204,9 +225,10 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
                     {p}
                   </button>
                 ))}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-3 pt-2">
                 <button onClick={handleCancel} disabled={saving} className="py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98] transition-transform disabled:opacity-60">
                   Cancel
                 </button>
