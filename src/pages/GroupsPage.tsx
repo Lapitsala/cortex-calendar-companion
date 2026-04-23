@@ -44,7 +44,9 @@ const GroupsPage = () => {
   // Group event creation
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [eventForm, setEventForm] = useState({
-    title: "", description: "", event_date: new Date().toISOString().split("T")[0],
+    title: "", description: "",
+    event_date: new Date().toISOString().split("T")[0],
+    end_date: new Date().toISOString().split("T")[0],
     start_time: "", end_time: "", location: "",
   });
   const [savingEvent, setSavingEvent] = useState(false);
@@ -174,17 +176,35 @@ const GroupsPage = () => {
       toast.error("Title, date, and start time are required");
       return;
     }
+    const endDate = eventForm.end_date && eventForm.end_date >= eventForm.event_date
+      ? eventForm.end_date
+      : eventForm.event_date;
+    if (eventForm.end_time && eventForm.end_date === eventForm.event_date && eventForm.end_time <= eventForm.start_time) {
+      toast.error("End time must be after start time");
+      return;
+    }
     setSavingEvent(true);
     try {
-      await createGroupEvent(selectedGroup.id, {
-        title: eventForm.title,
-        description: eventForm.description || undefined,
-        event_date: eventForm.event_date,
-        start_time: eventForm.start_time,
-        end_time: eventForm.end_time || undefined,
-        location: eventForm.location || undefined,
-      });
-      setEventForm({ title: "", description: "", event_date: new Date().toISOString().split("T")[0], start_time: "", end_time: "", location: "" });
+      // Create one event per day in the date range (inclusive)
+      const dates: string[] = [];
+      const cur = new Date(eventForm.event_date + "T00:00:00");
+      const last = new Date(endDate + "T00:00:00");
+      while (cur <= last) {
+        dates.push(cur.toISOString().split("T")[0]);
+        cur.setDate(cur.getDate() + 1);
+      }
+      for (const d of dates) {
+        await createGroupEvent(selectedGroup.id, {
+          title: eventForm.title,
+          description: eventForm.description || undefined,
+          event_date: d,
+          start_time: eventForm.start_time,
+          end_time: eventForm.end_time || undefined,
+          location: eventForm.location || undefined,
+        });
+      }
+      const today = new Date().toISOString().split("T")[0];
+      setEventForm({ title: "", description: "", event_date: today, end_date: today, start_time: "", end_time: "", location: "" });
       setShowCreateEvent(false);
       await fetchGroupEvents(selectedGroup.id);
     } catch {} finally {
@@ -617,30 +637,53 @@ const GroupsPage = () => {
             className="fixed inset-x-0 top-0 bottom-16 bg-foreground/30 backdrop-blur-sm z-[70] flex items-end justify-center"
             onClick={() => setShowCreateEvent(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25 }}
-              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-3">
+              onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-card rounded-t-2xl border-t border-border p-5 space-y-5 max-h-[85vh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-base font-bold text-foreground">New Group Event</h3>
                 <button onClick={() => setShowCreateEvent(false)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
-              <input value={eventForm.title} onChange={e => setEventForm(p => ({ ...p, title: e.target.value }))} placeholder="Event title *"
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              <input value={eventForm.description} onChange={e => setEventForm(p => ({ ...p, description: e.target.value }))} placeholder="Description (optional)"
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="date" value={eventForm.event_date} onChange={e => setEventForm(p => ({ ...p, event_date: e.target.value }))}
-                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                <input type="time" value={eventForm.start_time} onChange={e => setEventForm(p => ({ ...p, start_time: e.target.value }))}
-                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input type="time" value={eventForm.end_time} onChange={e => setEventForm(p => ({ ...p, end_time: e.target.value }))} placeholder="End time"
-                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                <input value={eventForm.location} onChange={e => setEventForm(p => ({ ...p, location: e.target.value }))} placeholder="Location"
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground px-1">Title *</label>
+                <input value={eventForm.title} onChange={e => setEventForm(p => ({ ...p, title: e.target.value }))} placeholder="Event title"
                   className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground px-1">Description</label>
+                <input value={eventForm.description} onChange={e => setEventForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional"
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">Start date *</label>
+                  <input type="date" value={eventForm.event_date} onChange={e => setEventForm(p => ({ ...p, event_date: e.target.value, end_date: p.end_date < e.target.value ? e.target.value : p.end_date }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">End date</label>
+                  <input type="date" value={eventForm.end_date} min={eventForm.event_date} onChange={e => setEventForm(p => ({ ...p, end_date: e.target.value }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">Start time *</label>
+                  <input type="time" value={eventForm.start_time} onChange={e => setEventForm(p => ({ ...p, start_time: e.target.value }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground px-1">End time</label>
+                  <input type="time" value={eventForm.end_time} onChange={e => setEventForm(p => ({ ...p, end_time: e.target.value }))}
+                    className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground px-1">Location</label>
+                <input value={eventForm.location} onChange={e => setEventForm(p => ({ ...p, location: e.target.value }))} placeholder="Optional"
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2">
                 <button onClick={() => setShowCreateEvent(false)} className="py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-[0.98]">
                   Cancel
                 </button>
