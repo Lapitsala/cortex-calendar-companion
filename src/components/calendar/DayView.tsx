@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { CalendarEvent } from "@/hooks/useCalendarEvents";
-import { Clock, MapPin, Bell, Layers } from "lucide-react";
+import { Clock, MapPin, Bell, Layers, X } from "lucide-react";
 import { eventsOverlap } from "@/lib/eventConflicts";
 import WeatherBadge from "@/components/WeatherBadge";
 
@@ -74,6 +75,7 @@ const DayView = ({ selectedDate, events, onEventTap }: DayViewProps) => {
     day: "numeric",
   });
   const stacks = buildStacks(dayEvents);
+  const [expandedStack, setExpandedStack] = useState<number | null>(null);
 
   return (
     <div>
@@ -109,42 +111,75 @@ const DayView = ({ selectedDate, events, onEventTap }: DayViewProps) => {
             const containerHeight = Math.max((latestEnd - earliestStart) * HOUR_HEIGHT, 28);
             const overlapCount = stack.length;
             const STACK_OFFSET = 4; // px per stacked card
+            const isExpanded = expandedStack === stackIdx;
+            const FAN_GAP = 6; // px gap between fanned cards
+            const FAN_CARD_HEIGHT = 56;
+            const expandedHeight = isExpanded
+              ? Math.max(containerHeight, overlapCount * (FAN_CARD_HEIGHT + FAN_GAP))
+              : containerHeight;
 
             return (
               <div
                 key={stackIdx}
-                className="absolute left-1 right-1"
-                style={{ top: containerTop, height: containerHeight, minHeight: 28 }}
+                className="absolute left-1 right-1 transition-[height] duration-300"
+                style={{
+                  top: containerTop,
+                  height: expandedHeight,
+                  minHeight: 28,
+                  zIndex: isExpanded ? 50 : "auto",
+                }}
               >
+                {isExpanded && overlapCount > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedStack(null);
+                    }}
+                    className="absolute -top-2 -right-2 z-[60] w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center shadow-md active:scale-95"
+                    aria-label="Collapse stack"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
                 {stack.map((event, idx) => {
                   const reminder = isReminder(event);
                   const startH = parseTimeToHours(event.start_time);
                   const endH = event.end_time ? parseTimeToHours(event.end_time) : startH + 1;
-                  const evTop = (startH - earliestStart) * HOUR_HEIGHT + idx * STACK_OFFSET;
-                  const evHeight = Math.max(
+                  const collapsedTop =
+                    (startH - earliestStart) * HOUR_HEIGHT + idx * STACK_OFFSET;
+                  const collapsedHeight = Math.max(
                     (endH - startH) * HOUR_HEIGHT - idx * STACK_OFFSET,
                     24,
                   );
-                  const z = 10 + (overlapCount - idx);
-                  const showBadge = idx === 0 && overlapCount > 1;
+                  const evTop = isExpanded
+                    ? idx * (FAN_CARD_HEIGHT + FAN_GAP)
+                    : collapsedTop;
+                  const evHeight = isExpanded ? FAN_CARD_HEIGHT : collapsedHeight;
+                  const z = isExpanded ? 20 + idx : 10 + (overlapCount - idx);
+                  const showBadge = !isExpanded && idx === 0 && overlapCount > 1;
+                  const sideInset = isExpanded ? 0 : idx * STACK_OFFSET;
 
                   return (
                     <button
                       key={event.id}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (overlapCount > 1 && !isExpanded) {
+                          setExpandedStack(stackIdx);
+                          return;
+                        }
                         onEventTap(event);
                       }}
-                      className={`absolute rounded-lg px-2.5 py-1.5 text-left overflow-hidden active:scale-[0.98] transition-transform border-l-[3px] flex flex-col justify-start ${
+                      className={`absolute rounded-lg px-2.5 py-1.5 text-left overflow-hidden active:scale-[0.98] transition-all duration-300 border-l-[3px] flex flex-col justify-start ${
                         reminder
                           ? "bg-primary/10 border-l-primary border border-dashed border-primary/30"
                           : `bg-card border border-border shadow-soft ${priorityBorders[event.priority]}`
-                      }`}
+                      } ${isExpanded ? "shadow-lg" : ""}`}
                       style={{
                         top: evTop,
                         height: evHeight,
-                        left: idx * STACK_OFFSET,
-                        right: idx * STACK_OFFSET,
+                        left: sideInset,
+                        right: sideInset,
                         zIndex: z,
                       }}
                     >
