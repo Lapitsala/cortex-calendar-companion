@@ -62,6 +62,10 @@ export const useEventConflictCheck = () => {
         // 1. Delete events the user marked for deletion
         await Promise.all(resolution.toDelete.map((id) => deleteEvent(id)));
 
+        // Helper: rank → priority (1 = high, 2 = medium, 3+ = low)
+        const priorityForRank = (rank: number): "high" | "medium" | "low" =>
+          rank === 1 ? "high" : rank === 2 ? "medium" : "low";
+
         // 2. If user wants to keep the new event, create it (with stack_order if ranked)
         let createdId: string | null = null;
         const newRank = resolution.keepOrder.indexOf("__new__");
@@ -73,18 +77,23 @@ export const useEventConflictCheck = () => {
             start_time: event.start_time,
             end_time: event.end_time,
             location: event.location,
-            priority: event.priority,
+            priority: newRank >= 0 ? priorityForRank(newRank + 1) : event.priority,
             ...(newRank >= 0 ? { stack_order: newRank + 1 } : {}),
           } as Parameters<typeof createEvent>[0]);
           createdId = created.id;
         }
 
-        // 3. Save stack_order on existing events the user ranked
+        // 3. Save stack_order + updated priority on existing events the user ranked
         await Promise.all(
           resolution.keepOrder
             .map((id, idx) => ({ id, order: idx + 1 }))
             .filter(({ id }) => id !== "__new__")
-            .map(({ id, order }) => updateEvent(id, { stack_order: order } as Partial<CalendarEvent>)),
+            .map(({ id, order }) =>
+              updateEvent(id, {
+                stack_order: order,
+                priority: priorityForRank(order),
+              } as Partial<CalendarEvent>),
+            ),
         );
 
         // 4. Inform user with toast about ranking
