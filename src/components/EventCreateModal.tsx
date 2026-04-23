@@ -15,6 +15,7 @@ interface EventCreateModalProps {
 interface EventFormState {
   title: string;
   eventDate: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   location: string;
@@ -28,6 +29,7 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
   const [form, setForm] = useState<EventFormState>({
     title: "",
     eventDate: initialDate,
+    endDate: initialDate,
     startTime: "",
     endTime: "",
     location: "",
@@ -37,7 +39,7 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
   const [errors, setErrors] = useState<Partial<Record<keyof EventFormState, string>>>({});
 
   useEffect(() => {
-    setForm((prev) => ({ ...prev, eventDate: initialDate }));
+    setForm((prev) => ({ ...prev, eventDate: initialDate, endDate: initialDate }));
   }, [initialDate]);
 
   const requiredComplete = useMemo(
@@ -49,6 +51,7 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
     setForm({
       title: "",
       eventDate: initialDate,
+      endDate: initialDate,
       startTime: "",
       endTime: "",
       location: "",
@@ -68,7 +71,10 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
     if (!form.title.trim()) nextErrors.title = "Title is required.";
     if (!form.eventDate.trim()) nextErrors.eventDate = "Date is required.";
     if (!form.startTime.trim()) nextErrors.startTime = "Start time is required.";
-    if (form.endTime && form.endTime <= form.startTime) nextErrors.endTime = "End time must be after start time.";
+    if (form.endDate && form.endDate < form.eventDate) nextErrors.endDate = "End date must be on or after start date.";
+    if (form.endTime && form.endDate === form.eventDate && form.endTime <= form.startTime) {
+      nextErrors.endTime = "End time must be after start time.";
+    }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -77,16 +83,28 @@ const EventCreateModal = ({ open, onClose, initialDate = defaultDate, title = "C
     if (!validate()) return;
     setSaving(true);
     try {
-      const createdId = await attemptCreateEvent({
-        title: form.title.trim(),
-        description: null,
-        event_date: form.eventDate,
-        start_time: form.startTime,
-        end_time: form.endTime || null,
-        location: form.location.trim() || null,
-        priority: form.priority,
-      });
-      if (createdId) {
+      // Build inclusive date range
+      const dates: string[] = [];
+      const cur = new Date(form.eventDate + "T00:00:00");
+      const last = new Date((form.endDate || form.eventDate) + "T00:00:00");
+      while (cur <= last) {
+        dates.push(cur.toISOString().split("T")[0]);
+        cur.setDate(cur.getDate() + 1);
+      }
+      let allOk = true;
+      for (const d of dates) {
+        const createdId = await attemptCreateEvent({
+          title: form.title.trim(),
+          description: null,
+          event_date: d,
+          start_time: form.startTime,
+          end_time: form.endTime || null,
+          location: form.location.trim() || null,
+          priority: form.priority,
+        });
+        if (!createdId) { allOk = false; break; }
+      }
+      if (allOk) {
         toast.success("Event created successfully");
         handleCancel();
       } else {
