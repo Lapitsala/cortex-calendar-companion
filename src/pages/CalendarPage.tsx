@@ -157,6 +157,11 @@ const CalendarPage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
                             <div className={`w-2 h-2 rounded-full ${event.priority === "high" ? "bg-destructive" : event.priority === "medium" ? "bg-warning" : "bg-success"}`} />
+                            {event.stack_order ? (
+                              <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                                {event.stack_order}
+                              </span>
+                            ) : null}
                             <h4 className="text-sm font-semibold text-foreground truncate">{event.title}</h4>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
