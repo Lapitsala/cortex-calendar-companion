@@ -44,7 +44,9 @@ const GroupsPage = () => {
   // Group event creation
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [eventForm, setEventForm] = useState({
-    title: "", description: "", event_date: new Date().toISOString().split("T")[0],
+    title: "", description: "",
+    event_date: new Date().toISOString().split("T")[0],
+    end_date: new Date().toISOString().split("T")[0],
     start_time: "", end_time: "", location: "",
   });
   const [savingEvent, setSavingEvent] = useState(false);
