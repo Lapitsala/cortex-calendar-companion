@@ -644,13 +644,18 @@ const GroupsPage = () => {
 
               {/* Action buttons */}
               <div className="space-y-2">
-                {myMembership && myMembership.role !== "admin" && myMembership.status === "accepted" && (
+                {myMembership && myMembership.role === "member" && myMembership.status === "accepted" && (
                   <button
                     onClick={() => handleRequestAdmin(myMembership)}
                     className="w-full py-2.5 rounded-xl bg-primary/10 text-primary font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                   >
                     <ShieldCheck className="w-4 h-4" /> Request Admin Role
                   </button>
+                )}
+                {myMembership && myMembership.role === "pending_admin" && myMembership.status === "accepted" && (
+                  <div className="w-full py-2.5 rounded-xl bg-warning/10 text-warning font-medium text-sm flex items-center justify-center gap-2">
+                    <Clock className="w-4 h-4" /> Admin request pending approval
+                  </div>
                 )}
 
                 <button
