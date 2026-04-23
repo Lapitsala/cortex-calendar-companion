@@ -36,6 +36,7 @@ const GroupsPage = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<GroupMember[]>([]);
+  const [pendingGroupIds, setPendingGroupIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -89,6 +90,7 @@ const GroupsPage = () => {
         allPending.push(...myPending);
       }
       setPendingInvites(allPending);
+      setPendingGroupIds(new Set(allPending.map(p => p.group_id)));
     };
     loadPending();
   }, [groups, user]);
