@@ -36,6 +36,7 @@ const GroupsPage = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<GroupMember[]>([]);
+  const [pendingGroupIds, setPendingGroupIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -89,6 +90,7 @@ const GroupsPage = () => {
         allPending.push(...myPending);
       }
       setPendingInvites(allPending);
+      setPendingGroupIds(new Set(allPending.map(p => p.group_id)));
     };
     loadPending();
   }, [groups, user]);
@@ -289,7 +291,7 @@ const GroupsPage = () => {
           {groups.length === 0 && (
             <p className="text-center text-sm text-muted-foreground py-8">No groups yet. Create one to get started!</p>
           )}
-          {groups.map(group => (
+          {groups.filter(g => !pendingGroupIds.has(g.id)).map(group => (
             <motion.button
               key={group.id}
               initial={{ opacity: 0, y: 8 }}
