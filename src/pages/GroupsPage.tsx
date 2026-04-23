@@ -20,7 +20,7 @@ const GroupsPage = () => {
   const {
     groups, createGroup, deleteGroup, updateGroup,
     getMembers, inviteMember, respondToInvite,
-    leaveGroup, kickMember, requestAdmin, refetch,
+    leaveGroup, kickMember, requestAdmin, approveAdminRequest, denyAdminRequest, refetch,
   } = useGroups();
   const {
     groupEvents, eventResponses, fetchGroupEvents, fetchEventResponses,
