@@ -175,13 +175,30 @@ export const useGroups = () => {
   };
 
   const requestAdmin = async (memberId: string) => {
-    // For now, directly promote to admin (in a real app this could be a request flow)
+    const { error } = await supabase
+      .from("group_members")
+      .update({ role: "pending_admin" })
+      .eq("id", memberId);
+    if (error) { toast.error("Failed to send admin request"); throw error; }
+    toast.success("Admin request sent! Waiting for approval.");
+  };
+
+  const approveAdminRequest = async (memberId: string) => {
     const { error } = await supabase
       .from("group_members")
       .update({ role: "admin" })
       .eq("id", memberId);
-    if (error) { toast.error("Failed to request admin"); throw error; }
-    toast.success("Admin role granted!");
+    if (error) { toast.error("Failed to approve request"); throw error; }
+    toast.success("Admin request approved");
+  };
+
+  const denyAdminRequest = async (memberId: string) => {
+    const { error } = await supabase
+      .from("group_members")
+      .update({ role: "member" })
+      .eq("id", memberId);
+    if (error) { toast.error("Failed to deny request"); throw error; }
+    toast.success("Admin request denied");
   };
 
   const setMemberRole = async (memberId: string, role: string) => {
@@ -213,7 +230,7 @@ export const useGroups = () => {
   return {
     groups, loading, createGroup, deleteGroup, updateGroup,
     getMembers, inviteMember, respondToInvite,
-    leaveGroup, kickMember, requestAdmin, setMemberRole,
+    leaveGroup, kickMember, requestAdmin, approveAdminRequest, denyAdminRequest, setMemberRole,
     getAvailability, setAvailability, refetch: fetchGroups,
   };
 };
