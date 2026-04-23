@@ -62,10 +62,19 @@ export const useEventConflictCheck = () => {
         // 1. Delete events the user marked for deletion
         await Promise.all(resolution.toDelete.map((id) => deleteEvent(id)));
 
+        // Map rank → priority: 1=high, 2=medium, 3+=low
+        const rankToPriority = (rank: number): "high" | "medium" | "low" => {
+          if (rank === 1) return "high";
+          if (rank === 2) return "medium";
+          return "low";
+        };
+
         // 2. If user wants to keep the new event, create it (with stack_order if ranked)
         let createdId: string | null = null;
         const newRank = resolution.keepOrder.indexOf("__new__");
         if (resolution.createNew) {
+          const newPriority =
+            newRank >= 0 ? rankToPriority(newRank + 1) : event.priority;
           const created = await createEvent({
             title: event.title,
             description: event.description ?? null,
@@ -73,18 +82,23 @@ export const useEventConflictCheck = () => {
             start_time: event.start_time,
             end_time: event.end_time,
             location: event.location,
-            priority: event.priority,
+            priority: newPriority,
             ...(newRank >= 0 ? { stack_order: newRank + 1 } : {}),
           } as Parameters<typeof createEvent>[0]);
           createdId = created.id;
         }
 
-        // 3. Save stack_order on existing events the user ranked
+        // 3. Save stack_order + remapped priority on existing events the user ranked
         await Promise.all(
           resolution.keepOrder
             .map((id, idx) => ({ id, order: idx + 1 }))
             .filter(({ id }) => id !== "__new__")
-            .map(({ id, order }) => updateEvent(id, { stack_order: order } as Partial<CalendarEvent>)),
+            .map(({ id, order }) =>
+              updateEvent(id, {
+                stack_order: order,
+                priority: rankToPriority(order),
+              } as Partial<CalendarEvent>),
+            ),
         );
 
         // 4. Inform user with toast about ranking
