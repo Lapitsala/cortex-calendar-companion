@@ -158,6 +158,22 @@ const GroupsPage = () => {
     }
   };
 
+  const handleApproveAdmin = async (member: GroupMember) => {
+    await approveAdminRequest(member.id);
+    if (selectedGroup) {
+      const m = await getMembers(selectedGroup.id);
+      setMembers(m);
+    }
+  };
+
+  const handleDenyAdmin = async (member: GroupMember) => {
+    await denyAdminRequest(member.id);
+    if (selectedGroup) {
+      const m = await getMembers(selectedGroup.id);
+      setMembers(m);
+    }
+  };
+
   const handleSaveEdit = async () => {
     if (!selectedGroup || !editName.trim()) return;
     await updateGroup(selectedGroup.id, editName, editDesc || null);
