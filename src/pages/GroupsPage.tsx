@@ -291,7 +291,7 @@ const GroupsPage = () => {
           {groups.length === 0 && (
             <p className="text-center text-sm text-muted-foreground py-8">No groups yet. Create one to get started!</p>
           )}
-          {groups.map(group => (
+          {groups.filter(g => !pendingGroupIds.has(g.id)).map(group => (
             <motion.button
               key={group.id}
               initial={{ opacity: 0, y: 8 }}
