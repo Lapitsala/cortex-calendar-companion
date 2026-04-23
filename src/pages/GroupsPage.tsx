@@ -176,17 +176,35 @@ const GroupsPage = () => {
       toast.error("Title, date, and start time are required");
       return;
     }
+    const endDate = eventForm.end_date && eventForm.end_date >= eventForm.event_date
+      ? eventForm.end_date
+      : eventForm.event_date;
+    if (eventForm.end_time && eventForm.end_date === eventForm.event_date && eventForm.end_time <= eventForm.start_time) {
+      toast.error("End time must be after start time");
+      return;
+    }
     setSavingEvent(true);
     try {
-      await createGroupEvent(selectedGroup.id, {
-        title: eventForm.title,
-        description: eventForm.description || undefined,
-        event_date: eventForm.event_date,
-        start_time: eventForm.start_time,
-        end_time: eventForm.end_time || undefined,
-        location: eventForm.location || undefined,
-      });
-      setEventForm({ title: "", description: "", event_date: new Date().toISOString().split("T")[0], start_time: "", end_time: "", location: "" });
+      // Create one event per day in the date range (inclusive)
+      const dates: string[] = [];
+      const cur = new Date(eventForm.event_date + "T00:00:00");
+      const last = new Date(endDate + "T00:00:00");
+      while (cur <= last) {
+        dates.push(cur.toISOString().split("T")[0]);
+        cur.setDate(cur.getDate() + 1);
+      }
+      for (const d of dates) {
+        await createGroupEvent(selectedGroup.id, {
+          title: eventForm.title,
+          description: eventForm.description || undefined,
+          event_date: d,
+          start_time: eventForm.start_time,
+          end_time: eventForm.end_time || undefined,
+          location: eventForm.location || undefined,
+        });
+      }
+      const today = new Date().toISOString().split("T")[0];
+      setEventForm({ title: "", description: "", event_date: today, end_date: today, start_time: "", end_time: "", location: "" });
       setShowCreateEvent(false);
       await fetchGroupEvents(selectedGroup.id);
     } catch {} finally {
