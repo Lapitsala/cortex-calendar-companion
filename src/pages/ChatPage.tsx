@@ -376,9 +376,16 @@ const ChatPage = () => {
 
     let assistantSoFar = "";
 
-    const upcomingEvents = events.slice(0, 20).map(e =>
-      `- ${e.title} on ${e.event_date} at ${e.start_time}${e.location ? ` (${e.location})` : ""} [${e.priority}]`
-    ).join("\n");
+    // Only include events from today onward — never include past-year/past-date events,
+    // otherwise the AI mixes events from previous years into queries like "next month".
+    const todayStr = new Date().toISOString().split("T")[0];
+    const upcomingEvents = events
+      .filter(e => e.event_date >= todayStr)
+      .sort((a, b) => a.event_date.localeCompare(b.event_date))
+      .slice(0, 50)
+      .map(e =>
+        `- ${e.title} on ${e.event_date} at ${e.start_time}${e.location ? ` (${e.location})` : ""} [${e.priority}]`
+      ).join("\n");
 
     // Build group context for scheduling
     const groupContext = await buildGroupContext();
