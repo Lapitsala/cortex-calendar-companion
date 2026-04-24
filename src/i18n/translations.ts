@@ -162,6 +162,7 @@ export const translations = {
     "insights.lifestyle.themeOne": "Lately you've been focused on \"{a}\" — it shows up {n} times this period",
     "insights.lifestyle.themeTwo": "Lately you've been spending time on \"{a}\" and \"{b}\" the most",
     "insights.lifestyle.focused": "Most of your time this period goes into {category} activities",
+    "insights.lifestyle.twoCategories": "Your time this period is split mostly between {a} and {b}",
     "insights.rec.start": "Start planning your day — add your first event!",
     "insights.rec.weekend": "You're busy on weekends. Try to schedule some rest 🌴",
     "insights.rec.lateNight": "Most activities are late at night. Try sleeping earlier for better health 🌙",
