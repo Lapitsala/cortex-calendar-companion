@@ -86,36 +86,10 @@ const InsightsPage = () => {
       .sort((a, b) => b.value - a.value);
 
     const topCategory = categoryData[0]?.name || "Personal";
-
-    // ---- Find dominant theme from real event titles ----
-    // Group events by normalized title to find what user actually does most
-    const STOPWORDS = new Set([
-      "the","a","an","and","or","of","to","for","in","on","at","with","my","me","i",
-      "is","are","was","were","be","do","does","did","go","going","get","class","meeting",
-      "ที่","กับ","และ","ของ","ใน","ไป","มา","จะ","ได้","ให้","วิชา","งาน","เรียน","นัด",
-    ]);
-    const phraseCount = new Map<string, { count: number; sample: string }>();
-    periodEvents.forEach((e) => {
-      const raw = e.title.trim();
-      if (!raw) return;
-      // Normalize: lowercase, strip punctuation, drop stopwords
-      const tokens = raw
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s]/gu, " ")
-        .split(/\s+/)
-        .filter((w) => w && w.length > 1 && !STOPWORDS.has(w));
-      const key = tokens.slice(0, 3).join(" ") || raw.toLowerCase();
-      const prev = phraseCount.get(key);
-      if (prev) {
-        prev.count += 1;
-      } else {
-        phraseCount.set(key, { count: 1, sample: raw });
-      }
-    });
-    const topPhrases = Array.from(phraseCount.values())
-      .filter((p) => p.count >= 2)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 2);
+    const secondCategory = categoryData[1]?.name;
+    const totalCount = periodEvents.length || 1;
+    const topShare = (categoryData[0]?.value || 0) / totalCount;
+    const topTwoShare = ((categoryData[0]?.value || 0) + (categoryData[1]?.value || 0)) / totalCount;
 
     // Monthly distribution for year view
     const monthlyData = Array.from({ length: 12 }, (_, i) => ({
@@ -137,36 +111,31 @@ const InsightsPage = () => {
       };
     });
 
-    // Lifestyle insight
+    // Lifestyle insight — category-focused
     let lifestyleInsight = "";
     if (periodEvents.length === 0) {
       lifestyleInsight = t("insights.lifestyle.empty");
-    } else if (topPhrases.length >= 1) {
-      // Use real event content
-      if (topPhrases.length >= 2) {
-        lifestyleInsight = t("insights.lifestyle.themeTwo", {
-          a: topPhrases[0].sample,
-          b: topPhrases[1].sample,
-        });
+    } else if (topShare >= 0.6) {
+      // Strongly dominant single category
+      if (topCategory === "Work") {
+        lifestyleInsight = t("insights.lifestyle.work", { day: dayNames[busiestDayIdx] });
+      } else if (topCategory === "Study") {
+        lifestyleInsight = t("insights.lifestyle.study", { hour: peakHour.hour });
+      } else if (topCategory === "Health") {
+        lifestyleInsight = t("insights.lifestyle.health");
+      } else if (topCategory === "Social") {
+        lifestyleInsight = t("insights.lifestyle.social");
       } else {
-        lifestyleInsight = t("insights.lifestyle.themeOne", {
-          a: topPhrases[0].sample,
-          n: topPhrases[0].count,
-        });
+        lifestyleInsight = t("insights.lifestyle.focused", { category: topCategory.toLowerCase() });
       }
-    } else if (topCategory === "Work") {
-      lifestyleInsight = t("insights.lifestyle.work", { day: dayNames[busiestDayIdx] });
-    } else if (topCategory === "Study") {
-      lifestyleInsight = t("insights.lifestyle.study", { hour: peakHour.hour });
-    } else if (topCategory === "Health") {
-      lifestyleInsight = t("insights.lifestyle.health");
-    } else if (topCategory === "Social") {
-      lifestyleInsight = t("insights.lifestyle.social");
-    } else {
-      // Fallback: pick most recurring category instead of "17 diverse activities"
-      lifestyleInsight = t("insights.lifestyle.focused", {
-        category: topCategory.toLowerCase(),
+    } else if (secondCategory && topTwoShare >= 0.7) {
+      // Two co-dominant categories
+      lifestyleInsight = t("insights.lifestyle.twoCategories", {
+        a: topCategory.toLowerCase(),
+        b: secondCategory.toLowerCase(),
       });
+    } else {
+      lifestyleInsight = t("insights.lifestyle.focused", { category: topCategory.toLowerCase() });
     }
 
     let recommendation = "";
