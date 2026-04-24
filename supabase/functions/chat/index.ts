@@ -13,10 +13,26 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = now.getUTCMonth() + 1; // 1-12
+    const dateRules = `
+
+CRITICAL DATE & TIME RULES (read carefully):
+- Today's date is ${today} (year=${currentYear}, month=${currentMonth}).
+- The CURRENT YEAR is ${currentYear}. Unless the user explicitly states a different year, ALL relative date expressions refer to the current year ${currentYear} or later — NEVER a past year.
+- "this month" = month ${currentMonth} of ${currentYear}.
+- "next month" = the month immediately after ${currentMonth}/${currentYear} (if ${currentMonth} is 12, then January of ${currentYear + 1}). It does NOT mean "next month of every year".
+- "next week", "tomorrow", "in N days/weeks/months" are always counted forward from ${today}.
+- When the user asks about availability/free time/events for a period (e.g. "เดือนหน้าฉันว่างตอนไหนบ้าง" / "when am I free next month"), you MUST ONLY consider events whose date falls within that exact period of the current/next year. IGNORE any event with a date in a previous year or outside the asked period — even if it appears in the context.
+- Never aggregate the same calendar month across multiple years. Each event date is a single specific calendar day (YYYY-MM-DD); treat it literally.
+- If an event in the provided context has a date in the past (before ${today}), do NOT use it to answer questions about future availability or upcoming schedule.
+- When emitting EVENT_CREATE / EVENT_UPDATE / GROUP_EVENT_CREATE blocks, always use a full YYYY-MM-DD date in the current or future year — never a past date.
+`;
     const calendarInfo = calendarContext
-      ? `\n\nThe user's upcoming calendar events:\n${calendarContext}\n\nToday's date is ${today}.`
-      : `\n\nToday's date is ${today}.`;
+      ? `${dateRules}\n\nThe user's upcoming calendar events:\n${calendarContext}`
+      : dateRules;
 
     const systemPrompt = `You are Cortex, a friendly and helpful AI calendar assistant. You help users manage their schedule, plan events, set goals, and stay organized.
 
