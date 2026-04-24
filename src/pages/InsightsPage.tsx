@@ -45,6 +45,7 @@ const InsightsPage = () => {
     const hourCount = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}:00`, count: 0 }));
     const dayOfWeekCount = [0, 0, 0, 0, 0, 0, 0];
     const categoryCount = new Map<string, number>();
+    const subCategoryCount = new Map<string, Map<string, { count: number; samples: Set<string> }>>();
     let totalDuration = 0;
 
     periodEvents.forEach((e) => {
@@ -61,6 +62,44 @@ const InsightsPage = () => {
         : /(eat|lunch|dinner|breakfast|coffee|movie|หนัง|เที่ยว|party|hangout|เพื่อน|friend)/i.test(title) ? "Social"
         : "Personal";
       categoryCount.set(cat, (categoryCount.get(cat) || 0) + 1);
+
+      // ----- Sub-category (more specific) -----
+      let sub = "general";
+      if (cat === "Personal") {
+        sub = /(doctor|dentist|clinic|hospital|appointment|หมอ|คลินิก|รพ|โรงพยาบาล|ตรวจ)/i.test(title) ? "appointment"
+          : /(bank|atm|pay|bill|errand|ธนาคาร|จ่าย|บิล|ธุระ)/i.test(title) ? "errand"
+          : /(family|mom|dad|parent|พ่อ|แม่|ครอบครัว|ญาติ)/i.test(title) ? "family"
+          : /(read|book|hobby|art|draw|music|game|อ่าน|หนังสือ|วาด|เล่น|ดนตรี)/i.test(title) ? "hobby"
+          : /(rest|relax|nap|spa|self|skincare|พัก|นอน|ผ่อนคลาย)/i.test(title) ? "self-care"
+          : /(shop|buy|grocery|market|ซื้อ|ตลาด|ช็อป)/i.test(title) ? "shopping"
+          : "routine";
+      } else if (cat === "Work") {
+        sub = /(meeting|sync|call|standup|ประชุม)/i.test(title) ? "meeting"
+          : /(project|task|deadline|โปรเจกต์|งาน)/i.test(title) ? "project"
+          : "work-task";
+      } else if (cat === "Study") {
+        sub = /(exam|test|quiz|midterm|final|สอบ)/i.test(title) ? "exam"
+          : /(homework|assignment|report|การบ้าน|รายงาน)/i.test(title) ? "assignment"
+          : /(class|lecture|เรียน|วิชา)/i.test(title) ? "class"
+          : "study-session";
+      } else if (cat === "Health") {
+        sub = /(gym|weight|ฟิต|ยิม)/i.test(title) ? "gym"
+          : /(run|jog|วิ่ง)/i.test(title) ? "running"
+          : /(yoga|pilates|โยคะ)/i.test(title) ? "yoga"
+          : "exercise";
+      } else if (cat === "Social") {
+        sub = /(movie|cinema|หนัง)/i.test(title) ? "movie"
+          : /(eat|lunch|dinner|breakfast|coffee|กิน|ข้าว|กาแฟ)/i.test(title) ? "dining"
+          : /(party|club|ปาร์ตี้)/i.test(title) ? "party"
+          : /(เที่ยว|trip|travel)/i.test(title) ? "outing"
+          : "hangout";
+      }
+      const subMap = subCategoryCount.get(cat) ?? new Map();
+      const subEntry = subMap.get(sub) ?? { count: 0, samples: new Set<string>() };
+      subEntry.count += 1;
+      if (subEntry.samples.size < 2) subEntry.samples.add(e.title.trim());
+      subMap.set(sub, subEntry);
+      subCategoryCount.set(cat, subMap);
 
       // Duration calc
       if (e.start_time && e.end_time) {
@@ -91,6 +130,16 @@ const InsightsPage = () => {
     const topShare = (categoryData[0]?.value || 0) / totalCount;
     const topTwoShare = ((categoryData[0]?.value || 0) + (categoryData[1]?.value || 0)) / totalCount;
 
+    // Get top sub-category within the dominant category
+    const topSubMap = subCategoryCount.get(topCategory);
+    const topSubs = topSubMap
+      ? Array.from(topSubMap.entries())
+          .map(([name, v]) => ({ name, count: v.count, samples: Array.from(v.samples) }))
+          .sort((a, b) => b.count - a.count)
+      : [];
+    const topSub = topSubs[0];
+    const sampleStr = topSub?.samples.slice(0, 2).join(", ") || "";
+
     // Monthly distribution for year view
     const monthlyData = Array.from({ length: 12 }, (_, i) => ({
       month: MONTHS[i],
@@ -115,25 +164,26 @@ const InsightsPage = () => {
     let lifestyleInsight = "";
     if (periodEvents.length === 0) {
       lifestyleInsight = t("insights.lifestyle.empty");
-    } else if (topShare >= 0.6) {
-      // Strongly dominant single category
-      if (topCategory === "Work") {
-        lifestyleInsight = t("insights.lifestyle.work", { day: dayNames[busiestDayIdx] });
-      } else if (topCategory === "Study") {
-        lifestyleInsight = t("insights.lifestyle.study", { hour: peakHour.hour });
-      } else if (topCategory === "Health") {
-        lifestyleInsight = t("insights.lifestyle.health");
-      } else if (topCategory === "Social") {
-        lifestyleInsight = t("insights.lifestyle.social");
-      } else {
-        lifestyleInsight = t("insights.lifestyle.focused", { category: topCategory.toLowerCase() });
-      }
+    } else if (topSub && sampleStr) {
+      // Detailed: sub-category + real samples
+      lifestyleInsight = t("insights.lifestyle.detailed", {
+        category: topCategory.toLowerCase(),
+        sub: topSub.name,
+        samples: sampleStr,
+      });
     } else if (secondCategory && topTwoShare >= 0.7) {
-      // Two co-dominant categories
       lifestyleInsight = t("insights.lifestyle.twoCategories", {
         a: topCategory.toLowerCase(),
         b: secondCategory.toLowerCase(),
       });
+    } else if (topCategory === "Work") {
+      lifestyleInsight = t("insights.lifestyle.work", { day: dayNames[busiestDayIdx] });
+    } else if (topCategory === "Study") {
+      lifestyleInsight = t("insights.lifestyle.study", { hour: peakHour.hour });
+    } else if (topCategory === "Health") {
+      lifestyleInsight = t("insights.lifestyle.health");
+    } else if (topCategory === "Social") {
+      lifestyleInsight = t("insights.lifestyle.social");
     } else {
       lifestyleInsight = t("insights.lifestyle.focused", { category: topCategory.toLowerCase() });
     }
