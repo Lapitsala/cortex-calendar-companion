@@ -66,7 +66,13 @@ const InsightsPage = () => {
       if (e.start_time && e.end_time) {
         const [sh, sm] = e.start_time.split(":").map(Number);
         const [eh, em] = e.end_time.split(":").map(Number);
-        totalDuration += (eh * 60 + em) - (sh * 60 + sm);
+        const startMin = sh * 60 + sm;
+        const endMin = eh * 60 + em;
+        let diff = endMin - startMin;
+        // Handle events that cross midnight (end <= start)
+        if (diff < 0) diff += 24 * 60;
+        // Skip invalid / zero-length entries
+        if (diff > 0) totalDuration += diff;
       }
     });
 
