@@ -58,7 +58,7 @@ const InsightsPage = () => {
       const cat = /(study|learn|class|lecture|homework)/i.test(title) ? "Study"
         : /(work|project|meeting|sync|call)/i.test(title) ? "Work"
         : /(gym|run|exercise|yoga|swim|sport)/i.test(title) ? "Health"
-        : /(eat|lunch|dinner|breakfast|coffee)/i.test(title) ? "Social"
+        : /(eat|lunch|dinner|breakfast|coffee|movie|หนัง|เที่ยว|party|hangout|เพื่อน|friend)/i.test(title) ? "Social"
         : "Personal";
       categoryCount.set(cat, (categoryCount.get(cat) || 0) + 1);
 
@@ -87,6 +87,36 @@ const InsightsPage = () => {
 
     const topCategory = categoryData[0]?.name || "Personal";
 
+    // ---- Find dominant theme from real event titles ----
+    // Group events by normalized title to find what user actually does most
+    const STOPWORDS = new Set([
+      "the","a","an","and","or","of","to","for","in","on","at","with","my","me","i",
+      "is","are","was","were","be","do","does","did","go","going","get","class","meeting",
+      "ที่","กับ","และ","ของ","ใน","ไป","มา","จะ","ได้","ให้","วิชา","งาน","เรียน","นัด",
+    ]);
+    const phraseCount = new Map<string, { count: number; sample: string }>();
+    periodEvents.forEach((e) => {
+      const raw = e.title.trim();
+      if (!raw) return;
+      // Normalize: lowercase, strip punctuation, drop stopwords
+      const tokens = raw
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .split(/\s+/)
+        .filter((w) => w && w.length > 1 && !STOPWORDS.has(w));
+      const key = tokens.slice(0, 3).join(" ") || raw.toLowerCase();
+      const prev = phraseCount.get(key);
+      if (prev) {
+        prev.count += 1;
+      } else {
+        phraseCount.set(key, { count: 1, sample: raw });
+      }
+    });
+    const topPhrases = Array.from(phraseCount.values())
+      .filter((p) => p.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 2);
+
     // Monthly distribution for year view
     const monthlyData = Array.from({ length: 12 }, (_, i) => ({
       month: MONTHS[i],
@@ -111,6 +141,19 @@ const InsightsPage = () => {
     let lifestyleInsight = "";
     if (periodEvents.length === 0) {
       lifestyleInsight = t("insights.lifestyle.empty");
+    } else if (topPhrases.length >= 1) {
+      // Use real event content
+      if (topPhrases.length >= 2) {
+        lifestyleInsight = t("insights.lifestyle.themeTwo", {
+          a: topPhrases[0].sample,
+          b: topPhrases[1].sample,
+        });
+      } else {
+        lifestyleInsight = t("insights.lifestyle.themeOne", {
+          a: topPhrases[0].sample,
+          n: topPhrases[0].count,
+        });
+      }
     } else if (topCategory === "Work") {
       lifestyleInsight = t("insights.lifestyle.work", { day: dayNames[busiestDayIdx] });
     } else if (topCategory === "Study") {
@@ -120,7 +163,10 @@ const InsightsPage = () => {
     } else if (topCategory === "Social") {
       lifestyleInsight = t("insights.lifestyle.social");
     } else {
-      lifestyleInsight = t("insights.lifestyle.balance", { n: periodEvents.length });
+      // Fallback: pick most recurring category instead of "17 diverse activities"
+      lifestyleInsight = t("insights.lifestyle.focused", {
+        category: topCategory.toLowerCase(),
+      });
     }
 
     let recommendation = "";
