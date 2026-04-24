@@ -205,7 +205,99 @@ When the user wants to create an event for a GROUP (e.g. "นัดกลุ่�
 Only include these blocks AFTER the user confirms the event details. Always ask for confirmation first.
 ${calendarInfo}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Tool-calling loop: do up to N non-streaming passes to resolve any
+    // web_search tool calls, then stream the FINAL answer to the client.
+    const convo: any[] = [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ];
+
+    const MAX_TOOL_ROUNDS = 3;
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const planRes = await fetch(GATEWAY_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: convo,
+          tools: [webSearchTool],
+          tool_choice: "auto",
+        }),
+      });
+
+      if (!planRes.ok) {
+        if (planRes.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (planRes.status === 402) {
+          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings > Workspace > Usage." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const t = await planRes.text();
+        console.error("AI gateway error (plan):", planRes.status, t);
+        return new Response(JSON.stringify({ error: "AI service error" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const planData = await planRes.json();
+      const choice = planData.choices?.[0];
+      const msg = choice?.message;
+      const toolCalls = msg?.tool_calls;
+
+      if (!toolCalls || toolCalls.length === 0) {
+        // No tool requested — break out and stream the final answer below.
+        // If the model already produced text in this non-stream call, just
+        // return it as a single SSE chunk so the client renders it.
+        const finalText: string = msg?.content || "";
+        const sse =
+          `data: ${JSON.stringify({ choices: [{ delta: { content: finalText } }] })}\n\n` +
+          `data: [DONE]\n\n`;
+        return new Response(sse, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        });
+      }
+
+      // Execute every tool call, append results, loop again.
+      convo.push({
+        role: "assistant",
+        content: msg.content ?? "",
+        tool_calls: toolCalls,
+      });
+      for (const tc of toolCalls) {
+        if (tc.function?.name === "web_search") {
+          let q = "";
+          try {
+            q = JSON.parse(tc.function.arguments || "{}").query || "";
+          } catch { /* ignore */ }
+          console.log("web_search query:", q);
+          const result = q ? await runWebSearch(q) : "Empty query.";
+          convo.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: `Web search results for "${q}":\n\n${result}`,
+          });
+        } else {
+          convo.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: `Unknown tool: ${tc.function?.name}`,
+          });
+        }
+      }
+    }
+
+    // After tool rounds — stream the final answer (no tools this time).
+    const finalRes = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -213,36 +305,33 @@ ${calendarInfo}`;
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
+        messages: convo,
         stream: true,
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    if (!finalRes.ok) {
+      if (finalRes.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
+      if (finalRes.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings > Workspace > Usage." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      const t = await finalRes.text();
+      console.error("AI gateway error (final):", finalRes.status, t);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
+    return new Response(finalRes.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
