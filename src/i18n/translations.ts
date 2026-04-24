@@ -330,6 +330,7 @@ export const translations = {
     "insights.lifestyle.themeOne": "ช่วงนี้คุณกำลังโฟกัสกับ \"{a}\" อยู่ — โผล่ในปฏิทิน {n} ครั้งในช่วงนี้",
     "insights.lifestyle.themeTwo": "ช่วงนี้คุณใช้เวลากับ \"{a}\" และ \"{b}\" มากที่สุด",
     "insights.lifestyle.focused": "ช่วงนี้เวลาส่วนใหญ่ของคุณหมดไปกับกิจกรรมแนว {category}",
+    "insights.lifestyle.twoCategories": "ช่วงนี้เวลาของคุณแบ่งระหว่างกิจกรรมแนว {a} และ {b} เป็นหลัก",
     "insights.rec.start": "เริ่มวางแผนวันของคุณ — เพิ่ม event แรกในปฏิทินเลย!",
     "insights.rec.weekend": "คุณยุ่งวันหยุดมาก ลองจัดสรรเวลาพักผ่อนบ้างนะ 🌴",
     "insights.rec.lateNight": "กิจกรรมส่วนใหญ่อยู่ช่วงดึก ลองปรับเวลานอนให้เร็วขึ้นเพื่อสุขภาพที่ดี 🌙",
