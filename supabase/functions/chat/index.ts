@@ -5,6 +5,83 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// --- Web search tool implementation -----------------------------------------
+// Uses DuckDuckGo's HTML endpoint (no API key required) and returns the top
+// results as a compact text block the model can ground its answer on.
+async function runWebSearch(query: string): Promise<string> {
+  try {
+    const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9,th;q=0.8",
+      },
+    });
+    if (!res.ok) return `No web results (status ${res.status}).`;
+    const html = await res.text();
+
+    // Extract result blocks: <a class="result__a" href="...">TITLE</a> ... <a class="result__snippet">SNIPPET</a>
+    const results: { title: string; url: string; snippet: string }[] = [];
+    const blockRe =
+      /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+    let m: RegExpExecArray | null;
+    const strip = (s: string) =>
+      s
+        .replace(/<[^>]+>/g, "")
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&nbsp;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    while ((m = blockRe.exec(html)) !== null && results.length < 8) {
+      let href = m[1];
+      // DDG wraps links like /l/?uddg=<encoded>
+      const ud = href.match(/[?&]uddg=([^&]+)/);
+      if (ud) {
+        try {
+          href = decodeURIComponent(ud[1]);
+        } catch { /* ignore */ }
+      }
+      results.push({ url: href, title: strip(m[2]), snippet: strip(m[3]) });
+    }
+    if (results.length === 0) return "No web results found.";
+    return results
+      .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
+      .join("\n\n");
+  } catch (e) {
+    console.error("web_search failed:", e);
+    return `Web search failed: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
+const webSearchTool = {
+  type: "function",
+  function: {
+    name: "web_search",
+    description:
+      "Search the public web for up-to-date information about events, concerts, news, products, places, ticket sales, etc. Use this whenever the user asks about something that may not be in your training data, especially real-world events with dates, venues, prices, or ticket links.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "A focused web search query (English or Thai). Include the event name, year/date, and country/venue when relevant.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
