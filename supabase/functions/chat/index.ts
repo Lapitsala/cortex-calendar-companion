@@ -5,6 +5,83 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// --- Web search tool implementation -----------------------------------------
+// Uses DuckDuckGo's HTML endpoint (no API key required) and returns the top
+// results as a compact text block the model can ground its answer on.
+async function runWebSearch(query: string): Promise<string> {
+  try {
+    const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9,th;q=0.8",
+      },
+    });
+    if (!res.ok) return `No web results (status ${res.status}).`;
+    const html = await res.text();
+
+    // Extract result blocks: <a class="result__a" href="...">TITLE</a> ... <a class="result__snippet">SNIPPET</a>
+    const results: { title: string; url: string; snippet: string }[] = [];
+    const blockRe =
+      /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+    let m: RegExpExecArray | null;
+    const strip = (s: string) =>
+      s
+        .replace(/<[^>]+>/g, "")
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&nbsp;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    while ((m = blockRe.exec(html)) !== null && results.length < 8) {
+      let href = m[1];
+      // DDG wraps links like /l/?uddg=<encoded>
+      const ud = href.match(/[?&]uddg=([^&]+)/);
+      if (ud) {
+        try {
+          href = decodeURIComponent(ud[1]);
+        } catch { /* ignore */ }
+      }
+      results.push({ url: href, title: strip(m[2]), snippet: strip(m[3]) });
+    }
+    if (results.length === 0) return "No web results found.";
+    return results
+      .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
+      .join("\n\n");
+  } catch (e) {
+    console.error("web_search failed:", e);
+    return `Web search failed: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
+const webSearchTool = {
+  type: "function",
+  function: {
+    name: "web_search",
+    description:
+      "Search the public web for up-to-date information about events, concerts, news, products, places, ticket sales, etc. Use this whenever the user asks about something that may not be in your training data, especially real-world events with dates, venues, prices, or ticket links.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "A focused web search query (English or Thai). Include the event name, year/date, and country/venue when relevant.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -95,6 +172,15 @@ IMAGE/OCR HANDLING:
 - After presenting extracted info, ask the user if they want to create calendar events from it
 - If the image is unreadable or has no event data, let the user know and ask for a clearer image
 
+WEB SEARCH (CRITICAL — USE PROACTIVELY):
+- You have access to a tool called "web_search" that performs a real-time public web search.
+- USE IT whenever the user asks about a real-world event, concert, festival, conference, sport match, movie release, product launch, news, place, ticket sale, or anything time-sensitive that may not be in your training data.
+- Examples that MUST trigger web_search: "มีคอนเสิร์ต BTS ที่ไทย 3 ธันวา ไปได้ไหม", "When does Taylor Swift perform in Bangkok?", "Where can I buy tickets for Coldplay 2026?", "หนังเรื่อง X เข้าฉายเมื่อไหร่".
+- You MAY call web_search multiple times (e.g. one query for event details, another for ticket info) before answering.
+- After getting search results, summarize the relevant facts (full event name, venue, date(s), city/country, ticket sale dates, ticket link/source) in your reply, then check the user's calendar for conflicts on that date and answer their question (e.g. "ไปได้ไหม").
+- If the user then confirms they want to add it, emit an EVENT_CREATE block as usual.
+- If web_search returns no useful results, tell the user honestly instead of guessing.
+
 IMPORTANT - Event Creation:
 When the user confirms they want to create a PERSONAL event, include this exact block in your response (the system will parse it to create the event automatically):
 
@@ -119,7 +205,99 @@ When the user wants to create an event for a GROUP (e.g. "นัดกลุ่�
 Only include these blocks AFTER the user confirms the event details. Always ask for confirmation first.
 ${calendarInfo}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Tool-calling loop: do up to N non-streaming passes to resolve any
+    // web_search tool calls, then stream the FINAL answer to the client.
+    const convo: any[] = [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ];
+
+    const MAX_TOOL_ROUNDS = 3;
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const planRes = await fetch(GATEWAY_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: convo,
+          tools: [webSearchTool],
+          tool_choice: "auto",
+        }),
+      });
+
+      if (!planRes.ok) {
+        if (planRes.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (planRes.status === 402) {
+          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings > Workspace > Usage." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const t = await planRes.text();
+        console.error("AI gateway error (plan):", planRes.status, t);
+        return new Response(JSON.stringify({ error: "AI service error" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const planData = await planRes.json();
+      const choice = planData.choices?.[0];
+      const msg = choice?.message;
+      const toolCalls = msg?.tool_calls;
+
+      if (!toolCalls || toolCalls.length === 0) {
+        // No tool requested — break out and stream the final answer below.
+        // If the model already produced text in this non-stream call, just
+        // return it as a single SSE chunk so the client renders it.
+        const finalText: string = msg?.content || "";
+        const sse =
+          `data: ${JSON.stringify({ choices: [{ delta: { content: finalText } }] })}\n\n` +
+          `data: [DONE]\n\n`;
+        return new Response(sse, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        });
+      }
+
+      // Execute every tool call, append results, loop again.
+      convo.push({
+        role: "assistant",
+        content: msg.content ?? "",
+        tool_calls: toolCalls,
+      });
+      for (const tc of toolCalls) {
+        if (tc.function?.name === "web_search") {
+          let q = "";
+          try {
+            q = JSON.parse(tc.function.arguments || "{}").query || "";
+          } catch { /* ignore */ }
+          console.log("web_search query:", q);
+          const result = q ? await runWebSearch(q) : "Empty query.";
+          convo.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: `Web search results for "${q}":\n\n${result}`,
+          });
+        } else {
+          convo.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: `Unknown tool: ${tc.function?.name}`,
+          });
+        }
+      }
+    }
+
+    // After tool rounds — stream the final answer (no tools this time).
+    const finalRes = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -127,36 +305,33 @@ ${calendarInfo}`;
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
+        messages: convo,
         stream: true,
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    if (!finalRes.ok) {
+      if (finalRes.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
+      if (finalRes.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings > Workspace > Usage." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      const t = await finalRes.text();
+      console.error("AI gateway error (final):", finalRes.status, t);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
+    return new Response(finalRes.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
