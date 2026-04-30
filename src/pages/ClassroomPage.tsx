@@ -92,6 +92,9 @@ const ClassroomPage = () => {
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
             <h1 className="font-display text-lg font-bold text-foreground">Classroom</h1>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-warning bg-warning/15 px-2 py-0.5 rounded-full">
+              For Demo
+            </span>
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center px-6">
@@ -115,6 +118,9 @@ const ClassroomPage = () => {
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
             <h1 className="font-display text-lg font-bold text-foreground">Classroom</h1>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-warning bg-warning/15 px-2 py-0.5 rounded-full">
+              For Demo
+            </span>
           </div>
           <span className="flex items-center gap-1 text-[10px] text-success font-medium bg-success/10 px-2 py-1 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
